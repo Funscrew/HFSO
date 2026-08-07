@@ -3,6 +3,9 @@
 // #include <stdarg.h>
 #include <stdexcept>
 
+#include "errno.h"
+
+
 using namespace HFPO;
 
 
@@ -17,8 +20,14 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
     int optval = 1;
 
     s = socket(AF_INET, SOCK_DGRAM, 0);
-    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof optval);
-    setsockopt(s, SOL_SOCKET, SO_DONTLINGER, (const char*)&optval, sizeof optval);
+    auto o1 = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof optval);
+
+    auto e1 = WSAGetLastError();   //NOTE: This might be 'errno' on linux!
+    if (e1 == 10093) { 
+        throw std::runtime_error("Winsock is not initialized!");
+    }
+
+    auto o2 = setsockopt(s, SOL_SOCKET, SO_DONTLINGER, (const char*)&optval, sizeof optval);
 
     // non-blocking...
     u_long iMode = 1;
@@ -32,6 +41,9 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
         auto bindRes = bind(s, (sockaddr*)&sin, sizeof sin);
         if (bindRes == SOCKET_ERROR) {
             // TODO: Some kind of better logging here!
+            // printf("err: %d\n", errno);
+            // auto e3 = WSAGetLastError();
+
             throw std::runtime_error("Error creating the socket!");
             // ASSERT(bindRes != SOCKET_ERROR, "Error creating the socket!");
         }

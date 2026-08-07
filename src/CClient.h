@@ -31,7 +31,7 @@ namespace HFPO
     // Such connections can be real, or simulated.
     class CUdpBlaster {
 
-        virtual int Receive(byte* receiveBuffer) = 0;
+        //virtual int Receive(byte* receiveBuffer) = 0;
 
         virtual int Send(byte* sendBuffer, int size, struct sockaddr* to) = 0;
 

@@ -44,6 +44,10 @@ add_executable(example-app
 target_link_libraries(example-app PRIVATE
     HFSO_static
 )
-# target_include_directories(example-app PUBLIC
-#     ${CMAKE_CURRENT_SOURCE_DIR}/src
-# )
+
+# Windows specific linking....
+if(WIN32)
+    target_link_libraries(example-app PRIVATE
+        ws2_32
+    )
+endif()
