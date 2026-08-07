@@ -14,17 +14,36 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(HFPO SHARED
+set(HFPO_SOURCES
     src/CClient.h
     src/CClient.cpp
-#     ../ggpo/src/lib/CReplayFile.h
-#     ../ggpo/src/lib/CReplayFile.cpp
-#     ../ggpo/src/lib/game_input.h
-#     ../src/burner/EZStream.cpp
-#     NetcodeInterop.cpp
-#     NetcodeInterop.h
 )
 
-target_include_directories(HFPO PUBLIC
+add_library(HFPO_static STATIC
+    ${HFPO_SOURCES}
+)
+
+add_library(HFPO_shared SHARED
+    ${HFPO_SOURCES}
+)
+
+target_include_directories(HFPO_static PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+
+target_include_directories(HFPO_shared PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+
+add_executable(example-app
+    src/example-app/main.cpp
+    src/example-app/main.h
+)
+
+target_link_libraries(example-app PRIVATE
+    HFPO_static
+)
+# target_include_directories(example-app PUBLIC
+#     ${CMAKE_CURRENT_SOURCE_DIR}/src
+# )
