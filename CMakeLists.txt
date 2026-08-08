@@ -15,6 +15,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(HFSO_SOURCES
+    src/drewCo.Logging.h
     src/CClient.h
     src/CClient.cpp
 )

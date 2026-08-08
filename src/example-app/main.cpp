@@ -2,18 +2,22 @@
 #include "CClient.h"
 
 #include <stdio.h>
+#include "drewCo.Logging.h"
+
+// #include "logger
 
 using namespace HFPO;
-
+using namespace drewCo::Logging;
 
 int main(int argc, char* argv[]) {
 
-    //printf("yo\n");
-    //printf("args are: %u\n", argc);
-    //for (size_t i = 0; i < argc; i++)
-    //{
-    //    printf("arg: %u is: '%s'\n", i + 1, argv[i]);
-    //}
+    // Init the loggers....
+    ILogger* csl = new CConsoleLogger();
+    csl->AddLevel(Levels::Info);
+
+    Log.AddLogger(csl);
+
+    Log.Info("Intializing sockets...");
 
 #if WIN32
     WSADATA wsaData;
@@ -22,7 +26,7 @@ int main(int argc, char* argv[]) {
         auto errCode = WSAGetLastError();
 
         // TODO: drewco logging tools.....
-        printf("Could not initialize winsock because of an error: %d\n", errCode);
+       // printf("Could not initialize winsock because of an error: %d\n", errCode);
         return -1;
     }
 #else
@@ -38,7 +42,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    printf("Using port: %u\n", usePort);
+    Log.Info("Using port: %u\n", usePort);
 
     CUdpClient c1 = CUdpClient(usePort);
 
