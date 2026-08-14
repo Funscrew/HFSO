@@ -18,6 +18,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(HFSO_SOURCES
     src/CClient.h
     src/CClient.cpp
+    src/IClockSource.hpp
+    src/Platform.h
 )
 
 
@@ -55,13 +57,17 @@ target_link_libraries(example-app PRIVATE
 
 # Windows specific linking....
 if(WIN32)
-    target_link_libraries(HFSO_static PRIVATE
+    set(WIN32_LIBS
         ws2_32
+        winmm
+    )
+    target_link_libraries(HFSO_static PRIVATE
+        ${WIN32_LIBS}
     )
     target_link_libraries(HFSO_shared PRIVATE
-        ws2_32
+        ${WIN32_LIBS}
     )
     target_link_libraries(example-app PRIVATE
-        ws2_32
+        ${WIN32_LIBS}
     )
 endif()

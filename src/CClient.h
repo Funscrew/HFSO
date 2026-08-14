@@ -1,66 +1,100 @@
 #pragma once
 
+#include "IClockSource.hpp"
+
 #include <stdint.h>
 
-// class HFPO::CEndpoint;
-// class HFPO::CUdp;
 
-//typedef char byte;
+// TODO: Maybe this lives in some kind of 'platform' header?
 
-#ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
 
-using Socket = SOCKET;
-constexpr Socket INVALIDSOCKET = INVALID_SOCKET;
-#else
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-using Socket = int;
-constexpr Socket INVALIDSOCKET = -1;
-#endif
 
 constexpr int MAX_PACKET_SIZE = 4000;
 
 namespace HFPO
 {
-    // Represents a UDP connection.
+
+  // ============================================================================================================
+  struct CNetworkStats {
+    int      bytes_sent = 0;
+    int      packets_sent = 0;
+
+    int      BytesReceived = 0;
+    int      PacketsReceived = 0;
+    float    KbpsReceived = 0;
+
+    float    kbps_sent = 0.0f;
+
+    // NEW: how long has client been active for?
+    int       Uptime = 0.0;
+  };
+
+  // ============================================================================================================
+  // Represents a UDP connection.
     // Such connections can be real, or simulated.
-    class CUdpBlaster {
+  class CUdpBlaster {
 
-        //virtual int Receive(byte* receiveBuffer) = 0;
+  public:
+    CNetworkStats Stats;
 
-        virtual int Send(byte* sendBuffer, int size, struct sockaddr* to) = 0;
+    CUdpBlaster(IClockSource* clock_);
 
-    };
+    //int Receive(byte* receiveBuffer, struct sockaddr_in& from);
+    int Send(byte* sendBuffer, size_t size, struct sockaddr* to);
 
-    // ============================================================================================================
-    class CUdpClient : CUdpBlaster {
+    // virtual ~CUdpBlaster();
 
-        public:
-            CUdpClient(uint16_t port_);
-            ~CUdpClient();
+  protected:
 
-        virtual int Send(byte* sendBuffer, int size, struct sockaddr* to) override;
+    IClockSource* _Clock = nullptr;
 
-        private:
-        uint16_t _Port = 0;
-        Socket _Socket = 0;
-    };
+    // These need to be the 'internal' versions of send + receive.
+    virtual int ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) = 0;
+    virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) = 0;
+  };
 
-    // ============================================================================================================
-    // A simulated UDP client for sending / receiving simulated udp traffic.
-    // Used in testing scenarios when we want to be able to reliably recreate certain network conditions.
-    class CSimUdpClient : CUdpBlaster {
+  // ============================================================================================================
+  class CUdpClient : public CUdpBlaster {
 
-    };
+  public:
+    CUdpClient(uint16_t port_, IClockSource* clock_);
+    ~CUdpClient();
 
-    // ============================================================================================================
-    // HFPOClient is responsible for managing local and remote connections to other players and services.
-    class CHFPOClient
-    {
-    };
+  protected:
+    virtual int ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) override;
+    virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) override;
+
+  private:
+
+    uint16_t _Port = 0;
+    Socket _Socket = 0;
+  };
+
+  // ============================================================================================================
+  // A simulated UDP client for sending / receiving simulated udp traffic.
+  // Used in testing scenarios when we want to be able to reliably recreate certain network conditions.
+  class CSimUdpClient : CUdpBlaster {
+
+  };
+
+  // ============================================================================================================
+  // HFPOClient is responsible for managing local and remote connections to other players and services.
+  class CHFPOClient
+  {
+  public:
+
+
+    CHFPOClient();
+    ~CHFPOClient();
+
+
+
+  private:
+
+    // Stuff we need...
+    // Local Player(s).
+    // Remote Player(s).
+    // Services?  ReplayClient, Spectator, etc.?
+
+  };
 }
