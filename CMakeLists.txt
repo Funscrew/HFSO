@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 4.2)
 
+
 if(CMAKE_GENERATOR MATCHES "Visual Studio")
     set(CMAKE_GENERATOR_TOOLSET "v143" CACHE STRING "Platform Toolset" FORCE)
 endif()
@@ -15,10 +16,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(HFSO_SOURCES
-    src/drewCo.Logging.h
     src/CClient.h
     src/CClient.cpp
 )
+
 
 add_library(HFSO_static STATIC
     ${HFSO_SOURCES}
@@ -36,8 +37,14 @@ target_include_directories(HFSO_shared PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
+set (EXAMPLE_SOURCES
+    src/toml.hpp
+    src/drewCo.Logging.hpp
+    src/drewCo.CLI.hpp
+)
 
 add_executable(example-app
+    ${EXAMPLE_SOURCES}
     src/example-app/main.cpp
     src/example-app/main.h
 )
@@ -48,6 +55,12 @@ target_link_libraries(example-app PRIVATE
 
 # Windows specific linking....
 if(WIN32)
+    target_link_libraries(HFSO_static PRIVATE
+        ws2_32
+    )
+    target_link_libraries(HFSO_shared PRIVATE
+        ws2_32
+    )
     target_link_libraries(example-app PRIVATE
         ws2_32
     )

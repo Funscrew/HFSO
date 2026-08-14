@@ -10,6 +10,7 @@
 #include <unordered_set>
 #include <list>
 #include <cstdarg>
+#include <stdexcept>
 
 typedef const std::string& CSTRING;
 
@@ -96,6 +97,9 @@ namespace drewCo::Logging
             // NOTE: We could have some kind of static buffer that grows to meet the current largest
             // args size or whatver.  That will prevent doing malloc / free all of the time.
             char* buffer = (char*)malloc(bufSize);
+            if (buffer == nullptr) {
+                throw std::runtime_error("could not allocate buffer!");
+            }
 
             vsprintf(buffer, fmt, args);
 
