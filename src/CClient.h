@@ -79,14 +79,12 @@ namespace HFPO
 
   // ============================================================================================================
   // HFPOClient is responsible for managing local and remote connections to other players and services.
-  class CHFPOClient
+  class CHFSOClient
   {
   public:
 
 
-    CHFPOClient();
-    ~CHFPOClient();
-
+    //CHFSOClient();
 
 
   private:

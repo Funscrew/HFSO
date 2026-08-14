@@ -1,4 +1,4 @@
-# Have Fun Screw Off
+# Have Fun, Screw Off!
 
 HFSO is rollback based netcode inspired by <a href="https://www.ggpo.net/">GGPO</a>.
 The goal of this project is to make code + feature improvements to the original concepts, as well as making libraries and bindings available to multiple platforms and languages.  Long term we intend for this project to be used in all kinds of online game projects, not just fighting games!

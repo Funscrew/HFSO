@@ -17,11 +17,13 @@ public:
 
   // Parameters with defaults:
   uint16_t LocalPort = 5000;
-  uint16_t RemotePort = 5001;
+  // uint16_t RemotePort = 5001;
+  std::vector<std::string> RemotePlayers;
 };
 
 int RunClient(ICommand* cmd);
 ICommand* FromToml(const toml::table& from);
+void ParseAddress(const char* addr, char* host, UINT16* port);
 
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -55,10 +57,9 @@ int RunClient(ICommand* cmd) {
 
   auto useCmd = (RunCommand*)cmd;
 
-  // Log.Info("port is: %u", useCmd->LocalPort);
+  CHFSOClient client;
 
-  //CHFPOClient client;
-  //client.
+  // Open local port + add remote player....
 
 
   return 0;
@@ -90,15 +91,77 @@ CCommandDef RunCommand::Configure() const {
   cd.Options.push_back(local);
 
   CCommandOption remote;
-  remote.Name = "RemotePort";
-  remote.Aliases.push_back("--remote-port");
-  remote.HelpText = "remote Port";
-  remote.DataTypeValue = DataType::UInt16;
-  local.DefaultValue = "5001";
+  remote.Name = "RemotePlayers";
+  remote.Aliases.push_back("--remotes");
+  remote.HelpText = "Remote Players";
+  remote.DataTypeValue = DataType::StringArray;
+  remote.IsRequired = true;
+  // local.DefaultValue = "5001";
 
   cd.Options.push_back(remote);
 
   return cd;
+}
+
+// --------------------------------------------------------------------------------------------------------------------------
+// SHARE:
+void SplitString(const std::string& input, char delimiter, std::vector<std::string>& output)
+{
+  output.clear();
+
+  std::string::size_type start = 0;
+
+  while (true)
+  {
+    const std::string::size_type end = input.find(delimiter, start);
+
+    if (end == std::string::npos)
+    {
+      output.emplace_back(input, start);
+      break;
+    }
+
+    output.emplace_back(input, start, end - start);
+    start = end + 1;
+  }
+}
+
+// --------------------------------------------------------------------------------------------------------------------------
+// SHARE:
+void Trim(std::string& str)
+{
+  constexpr char whitespace[] = " \t\n\r\f\v";
+
+  const size_t first = str.find_first_not_of(whitespace);
+
+  if (first == std::string::npos)
+  {
+    str.clear();
+    return;
+  }
+
+  const size_t last = str.find_last_not_of(whitespace);
+
+  str.erase(last + 1);
+  str.erase(0, first);
+}
+
+// --------------------------------------------------------------------------------------------------------------------------
+void GetStringArray(const toml::v3::node& node, std::vector<std::string>& target)
+{
+  if(!node.is_array()){
+    throw std::runtime_error("node is not nan array!");
+  }
+  auto arr = node.as_array();
+  size_t len = arr->size();
+  for (size_t i = 0; i < len; i++)
+  {
+    auto next = arr->get(i);
+    if (!next->is_string()) { 
+      throw std::runtime_error("array item is not a string!");
+    }
+    target.push_back(next->as_string()->get());
+  }
 }
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -112,13 +175,49 @@ ICommand* FromToml(const toml::table& from) {
     res->LocalPort = x;
   }
 
-  auto rpMatch = from.find("RemotePort");
+  auto rpMatch = from.find("RemotePlayers");
   if (rpMatch != from.end()) {
-    auto x = rpMatch->second.as_integer()->get();
-    res->RemotePort = x;
+    GetStringArray(rpMatch->second, res->RemotePlayers);
+  }
+  else { 
+    // This is where some kind of fallback would come into play....
   }
 
   return res;
 }
 
 
+
+
+
+const size_t MAX_HOST = 128;
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------
+// Parse the address of the form [host]:port into host (ip) and port.
+void ParseAddress(const char* addr, char* host, UINT16* port)
+{
+  memset(host, 0, MAX_HOST);
+
+  int pos = -1;
+  size_t len = strnlen_s(addr, MAX_HOST);
+  for (UINT i = 0; i < len; i++)
+  {
+    if (addr[i] == ':') { pos = i; break; }
+  }
+  if (pos == -1) {
+    memcpy(host, addr, len);
+  }
+  else {
+    if (pos > 0) {
+      memcpy(host, addr, pos);
+    }
+    char portPart[MAX_HOST];
+    strncpy_s(portPart, len - (pos + 1) + 1, addr + pos + 1, MAX_HOST);
+
+    UINT16 usePort = std::atoi(portPart);
+    if (usePort != 0) {
+      *port = usePort;
+    }
+
+  }
+}
