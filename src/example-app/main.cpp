@@ -27,26 +27,15 @@ ICommand* FromToml(const toml::table& from);
 // ------------------------------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
 
-Log.Info("Intializing sockets...");
-#if WIN32
-  WSADATA wsaData;
-  int startup = WSAStartup(MAKEWORD(2, 2), &wsaData);
-  if (startup) {
-    auto errCode = WSAGetLastError();
-
-    // TODO: drewco logging tools.....
-   // printf("Could not initialize winsock because of an error: %d\n", errCode);
-    return -1;
-  }
-#else
-  throw std::runtime_error("not supported!");
-#endif
-
   // Init the loggers....
   ILogger* csl = new CConsoleLogger();
   csl->AddLevel(Levels::Info);
   Log.AddLogger(csl);
 
+  Log.Info("Intializing sockets...");
+
+  int initOK = Platform::InitSockets();
+  if (initOK) { return initOK; }
 
   RunCommand c;
   CParser parser;

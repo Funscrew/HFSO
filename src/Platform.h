@@ -1,3 +1,4 @@
+#include <stdexcept>
 
 #if defined(_WIN32)
 
@@ -10,10 +11,36 @@ constexpr Socket INVALIDSOCKET = INVALID_SOCKET;
 
 
 namespace Platform {
+
+
   // ------------------------------------------------------------------------------------------------------------------
+  // TODO: Use this standard clock plz:
+  // https://stackoverflow.com/questions/14783468/is-there-a-standard-library-equivalent-of-timegettime
   int GetSystemTime() {
     return timeGetTime();
   }
+
+  // ------------------------------------------------------------------------------------------------------------------
+  // Any socket iniitialization code.
+  int InitSockets() {
+
+    WSADATA wsaData;
+    int startup = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (startup) {
+      auto errCode = WSAGetLastError();
+
+      // TODO: drewco logging tools.....
+     // printf("Could not initialize winsock because of an error: %d\n", errCode);
+      return -1;
+    }
+
+    return 0;
+  }
+
+  // ------------------------------------------------------------------------------------------------------------------
+  // Code to shutdown sockets (if any)
+  void ShutdownSockets() { throw std::runtime_error("not implemented!"); }
+
 }
 
 #elif defined(__linux__)
@@ -35,6 +62,6 @@ namespace Platform {
 }
 
 #else 
-  #error Unsupported Platform
+#error Unsupported Platform
 #endif
 
