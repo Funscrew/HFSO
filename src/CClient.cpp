@@ -3,8 +3,9 @@
 #include <stdexcept>
 #include "errno.h"
 
-using namespace HFPO;
+using namespace HFSO;
 
+const int MIN_PLAYERS = 2;
 
 // ------------------------------------------------------------------------------------------------
 SOCKET CreateSocket(uint32_t bind_port, int retries)
@@ -52,12 +53,13 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
 }
 
 // ------------------------------------------------------------------------------------------------
-CUdpBlaster::CUdpBlaster(IClockSource* clock_)
+IUdpBlaster::IUdpBlaster(IClockSource* clock_)
   : _Clock(clock_)
-{ }
+{
+}
 
 // ------------------------------------------------------------------------------------------------
-int CUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
+int IUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
 {
 
   int res = SendImpl(sendBuffer, size, to);
@@ -70,29 +72,97 @@ int CUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
 
 
 // ------------------------------------------------------------------------------------------------
-CUdpClient::CUdpClient(uint16_t port_, IClockSource* clock_) :
-  CUdpBlaster(clock_)
+CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource* clock_) :
+  IUdpBlaster(clock_)
   , _Port(port_)
 {
   _Socket = CreateSocket(_Port, 3);
 }
 
 // ------------------------------------------------------------------------------------------------
-int CUdpClient::ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) {
+int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) {
   throw std::runtime_error("not implemented!");
 }
 
 // ------------------------------------------------------------------------------------------------
-int CUdpClient::SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) {
+int CUdpBlaster::SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) {
   int res = sendto(_Socket, reinterpret_cast<const char*>(sendBuffer), size, 0, to, sizeof to);
   return res;
 }
 
 // ------------------------------------------------------------------------------------------------
-CUdpClient::~CUdpClient() {
+CUdpBlaster::~CUdpBlaster() {
   if (_Socket != INVALIDSOCKET) {
     // Blow it up here!
     closesocket(_Socket);
   }
   _Socket = INVALIDSOCKET;
 }
+
+
+// ------------------------------------------------------------------------------------------------
+CHFSOClient::CHFSOClient(uint8_t maxPlayers_)
+  : MaxPlayers(maxPlayers_)
+{
+  if (MaxPlayers < MIN_PLAYERS) { 
+    throw new std::runtime_error("You must have a minimum of two players!");
+  }
+  if (MaxPlayers > 2) { 
+    throw new std::runtime_error("This client can only support a max of two players!");
+  }
+}
+
+
+// ------------------------------------------------------------------------------------------------
+CHFSOClient::~CHFSOClient() {}
+
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::Init(IUdpBlaster* udp_)
+{
+  if (IsInitialized) { throw std::runtime_error("Client has already been initialized!"); }
+
+  _Udp = udp_;
+  IsInitialized = true;
+}
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::CheckInit() {
+  if (!IsInitialized) {
+    throw std::runtime_error("Client is not initialized!");
+  }
+}
+
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::AddPlayer(CPlayer& player)
+{
+  size_t len = _AllPlayers.size();
+  if (len >= MaxPlayers) {
+    throw std::runtime_error("Max players exceeded!");
+  }
+
+  if (!player.IsLocal && !player.RemoteAddr) {
+    throw std::runtime_error("Remote players must have an assigned address!");
+  }
+  if (player.IsLocal && player.RemoteAddr) { 
+    throw std::runtime_error("Local players must not have an assigned address!");
+  }
+
+  for (size_t i = 0; i < len; i++)
+  {
+    auto& p = _AllPlayers[i];
+    if (player.PlayerIndex == p.PlayerIndex) {
+      throw std::runtime_error("Player index is already in use!");
+    }
+  }
+
+  _AllPlayers.push_back(player);
+}
+
+
+
+// ------------------------------------------------------------------------------------------------
+CSimHFSOClient::CSimHFSOClient(uint8_t maxPlayers_)
+  : CHFSOClient(maxPlayers_)
+  {  }

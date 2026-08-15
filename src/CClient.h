@@ -1,17 +1,13 @@
 #pragma once
 
-#include "IClockSource.hpp"
-
 #include <stdint.h>
 
-
-// TODO: Maybe this lives in some kind of 'platform' header?
-
-
+#include "IClockSource.hpp"
+#include <vector>
 
 constexpr int MAX_PACKET_SIZE = 4000;
 
-namespace HFPO
+namespace HFSO
 {
 
   // ============================================================================================================
@@ -32,12 +28,12 @@ namespace HFPO
   // ============================================================================================================
   // Represents a UDP connection.
     // Such connections can be real, or simulated.
-  class CUdpBlaster {
+  class IUdpBlaster {
 
   public:
     CNetworkStats Stats;
 
-    CUdpBlaster(IClockSource* clock_);
+    IUdpBlaster(IClockSource* clock_);
 
     //int Receive(byte* receiveBuffer, struct sockaddr_in& from);
     int Send(byte* sendBuffer, size_t size, struct sockaddr* to);
@@ -54,11 +50,11 @@ namespace HFPO
   };
 
   // ============================================================================================================
-  class CUdpClient : public CUdpBlaster {
+  class CUdpBlaster : public IUdpBlaster {
 
   public:
-    CUdpClient(uint16_t port_, IClockSource* clock_);
-    ~CUdpClient();
+    CUdpBlaster(uint16_t port_, IClockSource* clock_);
+    ~CUdpBlaster();
 
   protected:
     virtual int ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) override;
@@ -73,26 +69,71 @@ namespace HFPO
   // ============================================================================================================
   // A simulated UDP client for sending / receiving simulated udp traffic.
   // Used in testing scenarios when we want to be able to reliably recreate certain network conditions.
-  class CSimUdpClient : CUdpBlaster {
+  class CSimUdpBlaster : IUdpBlaster {
 
+  };
+
+  // ============================================================================================================
+  struct CPlayer {
+
+    /// <summary>
+    /// The name of the player.
+    /// </summary>
+    std::string Name;
+
+    /// <summary>
+    /// Zero based index for each player.  0 == player 1, 1 == player 2 and so on.
+    /// Negative numbers can be used for implementation specific reasons.
+    /// </summary>
+    int PlayerIndex = -1;
+
+    bool IsLocal = false;
+
+    // These are used for remote players.
+    sockaddr* RemoteAddr = nullptr;
   };
 
   // ============================================================================================================
   // HFPOClient is responsible for managing local and remote connections to other players and services.
   class CHFSOClient
   {
+  private:
+    uint8_t MaxPlayers;
+
   public:
 
+    CHFSOClient(uint8_t maxPlayers_);
+    ~CHFSOClient();
 
-    //CHFSOClient();
+    void Init(IUdpBlaster* udp_);
 
+    void AddPlayer(CPlayer& player);
+
+  protected:
+    IUdpBlaster* _Udp = nullptr;
+
+    std::vector<CPlayer> _AllPlayers;
 
   private:
+
+
+    bool IsInitialized = false;
+    void CheckInit();
 
     // Stuff we need...
     // Local Player(s).
     // Remote Player(s).
     // Services?  ReplayClient, Spectator, etc.?
 
+  };
+
+
+  // ============================================================================================================
+  class CSimHFSOClient : public CHFSOClient {
+
+    public:
+      CSimHFSOClient(uint8_t maxPlayers);
+
+      inline uint8_t GetPlayerCount() { return _AllPlayers.size(); }
   };
 }

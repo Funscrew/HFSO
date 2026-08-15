@@ -5,11 +5,13 @@
 #include "drewCo.Logging.hpp"
 #include "drewCo.CLI.hpp"
 
+#define DEL(x) { if(x) { delete(x); } }
 
-using namespace HFPO;
+using namespace HFSO;
 using namespace drewCo::Logging;
 using namespace drewCo::CLI;
 
+// ========================================================================================================================
 class RunCommand : public ICommand {
 public:
   virtual CommandValidationResult Validate() const override;
@@ -57,10 +59,32 @@ int RunClient(ICommand* cmd) {
 
   auto useCmd = (RunCommand*)cmd;
 
-  CHFSOClient client;
+  // Init components.  This is where someone could use test / fake stuff for testing.
+  auto clock = new CSystemClock();
+  auto blaster = new CUdpBlaster(useCmd->LocalPort, clock);
 
   // Open local port + add remote player....
+  const int MAX_PLAYERS = 2;
+  CSimHFSOClient client(MAX_PLAYERS);
+  client.Init(blaster);
 
+  CPlayer p;
+  p.IsLocal = true;
+  p.PlayerIndex = 0;
+  p.Name = "Bob";
+  client.AddPlayer(p);
+
+  Log.Info("A player was added!");
+
+  uint8_t count = client.GetPlayerCount();
+  Log.Info("the listed player count is: %d", count);
+
+  // DO the loop.
+  // For example purposes, we will attempt to connect to our remote players....
+
+  // Cleanup the base components.
+  DEL(blaster);
+  DEL(clock);
 
   return 0;
 }
@@ -149,7 +173,7 @@ void Trim(std::string& str)
 // --------------------------------------------------------------------------------------------------------------------------
 void GetStringArray(const toml::v3::node& node, std::vector<std::string>& target)
 {
-  if(!node.is_array()){
+  if (!node.is_array()) {
     throw std::runtime_error("node is not nan array!");
   }
   auto arr = node.as_array();
@@ -157,7 +181,7 @@ void GetStringArray(const toml::v3::node& node, std::vector<std::string>& target
   for (size_t i = 0; i < len; i++)
   {
     auto next = arr->get(i);
-    if (!next->is_string()) { 
+    if (!next->is_string()) {
       throw std::runtime_error("array item is not a string!");
     }
     target.push_back(next->as_string()->get());
@@ -179,7 +203,7 @@ ICommand* FromToml(const toml::table& from) {
   if (rpMatch != from.end()) {
     GetStringArray(rpMatch->second, res->RemotePlayers);
   }
-  else { 
+  else {
     // This is where some kind of fallback would come into play....
   }
 

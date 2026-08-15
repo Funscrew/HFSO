@@ -1,3 +1,8 @@
+#pragma once 
+
+#ifndef ICLOCKSOURCE_H
+#define ICLOCKSOURCE_H
+
 #include "platform.h"
 
 // ============================================================================================================
@@ -9,7 +14,7 @@ public:
 };
 
 // ============================================================================================================
-class SystemClock : public IClockSource {
+class CSystemClock : public IClockSource {
 private:
   int _LastTime = 0;
 
@@ -47,3 +52,5 @@ public:
     _CurTime += amount; return _CurTime;
   }
 };
+
+#endif

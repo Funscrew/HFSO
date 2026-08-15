@@ -9,20 +9,19 @@
 using Socket = SOCKET;
 constexpr Socket INVALIDSOCKET = INVALID_SOCKET;
 
-
 namespace Platform {
 
 
   // ------------------------------------------------------------------------------------------------------------------
   // TODO: Use this standard clock plz:
   // https://stackoverflow.com/questions/14783468/is-there-a-standard-library-equivalent-of-timegettime
-  int GetSystemTime() {
+  __forceinline int GetSystemTime() {
     return timeGetTime();
   }
 
   // ------------------------------------------------------------------------------------------------------------------
   // Any socket iniitialization code.
-  int InitSockets() {
+  __forceinline int InitSockets() {
 
     WSADATA wsaData;
     int startup = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -39,7 +38,7 @@ namespace Platform {
 
   // ------------------------------------------------------------------------------------------------------------------
   // Code to shutdown sockets (if any)
-  void ShutdownSockets() { throw std::runtime_error("not implemented!"); }
+  __forceinline void ShutdownSockets() { throw std::runtime_error("not implemented!"); }
 
 }
 
