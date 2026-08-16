@@ -7,7 +7,7 @@
 
 constexpr int MAX_PACKET_SIZE = 4000;
 
-namespace HFSO
+namespace funscrew::HFSO
 {
 
   // ============================================================================================================
@@ -90,7 +90,8 @@ namespace HFSO
     bool IsLocal = false;
 
     // These are used for remote players.
-    sockaddr* RemoteAddr = nullptr;
+    // NOTE: If/when we care about ipv6 support (and we should) this is where we will do the updates.
+    sockaddr_in RemoteAddr;
   };
 
   // ============================================================================================================
@@ -131,9 +132,15 @@ namespace HFSO
   // ============================================================================================================
   class CSimHFSOClient : public CHFSOClient {
 
-    public:
-      CSimHFSOClient(uint8_t maxPlayers);
+  public:
+    CSimHFSOClient(uint8_t maxPlayers);
 
-      inline uint8_t GetPlayerCount() { return _AllPlayers.size(); }
+    inline uint8_t GetPlayerCount() { return _AllPlayers.size(); }
   };
+
+
+  // Free functions...
+  sockaddr_in CreateAddr(const char* ip, uint16_t port);
+  void CreateLocalPlayer(const char* name, uint16_t playerIndex, CPlayer* __target);
+  void CreateRemotePlayer(const char* name, uint16_t playerIndex, const char* ip, uint16_t port, CPlayer* __target);
 }

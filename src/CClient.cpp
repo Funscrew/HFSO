@@ -3,8 +3,7 @@
 #include <stdexcept>
 #include "errno.h"
 
-using namespace HFSO;
-
+using namespace funscrew::HFSO;
 const int MIN_PLAYERS = 2;
 
 // ------------------------------------------------------------------------------------------------
@@ -142,12 +141,13 @@ void CHFSOClient::AddPlayer(CPlayer& player)
     throw std::runtime_error("Max players exceeded!");
   }
 
-  if (!player.IsLocal && !player.RemoteAddr) {
-    throw std::runtime_error("Remote players must have an assigned address!");
-  }
-  if (player.IsLocal && player.RemoteAddr) { 
-    throw std::runtime_error("Local players must not have an assigned address!");
-  }
+  // TODO: Find a way to validate the addresses depending on the player type....
+  //if (!player.IsLocal && player.RemoteAddr) {
+  //  throw std::runtime_error("Remote players must have an assigned address!");
+  //}
+  //if (player.IsLocal && player.RemoteAddr) { 
+  //  throw std::runtime_error("Local players must not have an assigned address!");
+  //}
 
   for (size_t i = 0; i < len; i++)
   {
@@ -166,3 +166,45 @@ void CHFSOClient::AddPlayer(CPlayer& player)
 CSimHFSOClient::CSimHFSOClient(uint8_t maxPlayers_)
   : CHFSOClient(maxPlayers_)
   {  }
+
+
+
+
+
+
+
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+sockaddr_in funscrew::HFSO::CreateAddr(const char* ip, uint16_t port)
+{
+  sockaddr_in    res;
+  res.sin_family = AF_INET;
+  res.sin_port = htons(port);
+  inet_pton(AF_INET, ip, &res.sin_addr.s_addr);
+
+  if (!res.sin_addr.s_addr) {
+    throw std::runtime_error("Invalid peer address!");
+  }
+
+  return res;
+}
+
+
+// ------------------------------------------------------------------------------------------------------------------------
+void funscrew::HFSO::CreateLocalPlayer(const char* name, uint16_t playerIndex, CPlayer* __target)
+{
+  __target->IsLocal = true;
+  __target->Name = name,
+    __target->PlayerIndex = playerIndex;
+  // __target->Magic = GetMagic();
+}
+
+// ------------------------------------------------------------------------------------------------------------------------
+void funscrew::HFSO::CreateRemotePlayer(const char* name, uint16_t playerIndex, const char* ip, uint16_t port, CPlayer* __target)
+{
+  __target->PlayerIndex = playerIndex;
+  __target->IsLocal = false,
+    __target->Name = name,
+    __target->RemoteAddr = CreateAddr(ip, port);
+}

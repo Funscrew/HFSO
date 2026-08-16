@@ -7,9 +7,11 @@
 
 #define DEL(x) { if(x) { delete(x); } }
 
-using namespace HFSO;
+using namespace funscrew::HFSO;
 using namespace drewCo::Logging;
 using namespace drewCo::CLI;
+
+const size_t MAX_HOST = 128;
 
 // ========================================================================================================================
 class RunCommand : public ICommand {
@@ -53,6 +55,7 @@ int main(int argc, char* argv[]) {
 }
 
 
+
 // ------------------------------------------------------------------------------------------------------------------------
 int RunClient(ICommand* cmd) {
   Log.Info("Running it!");
@@ -68,13 +71,45 @@ int RunClient(ICommand* cmd) {
   CSimHFSOClient client(MAX_PLAYERS);
   client.Init(blaster);
 
-  CPlayer p;
-  p.IsLocal = true;
-  p.PlayerIndex = 0;
-  p.Name = "Bob";
-  client.AddPlayer(p);
 
-  Log.Info("A player was added!");
+  {
+    CPlayer p;
+    CreateLocalPlayer("Bob", 0, &p);
+    client.AddPlayer(p);
+    Log.Info("A player was added!");
+  }
+
+
+
+  {
+    // Let's make a remote player now...
+    char host[MAX_HOST];
+    uint16_t port;
+    ParseAddress(useCmd->RemotePlayers[0].data(), (char*)(&host), &port);
+
+    CPlayer r;
+    CreateRemotePlayer("Dave", 1, host, port, &r);
+    client.AddPlayer(r);
+    Log.Info("A remote player was added!");
+  }
+
+  // sockaddr_in    _peer_addr;
+//  _peer_addr.sin_family = AF_INET;
+//_peer_addr.sin_port = htons(port);
+//inet_pton(AF_INET, ip, &_peer_addr.sin_addr.s_addr);
+
+//if (!_peer_addr.sin_addr.s_addr) {
+//  throw std::runtime_error("Invalid peer address!");
+//}
+
+//do {
+//  _magic_number = (uint16)rand();
+//} while (_magic_number == 0);
+//poll.RegisterLoopSink(this);
+
+
+
+
 
   uint8_t count = client.GetPlayerCount();
   Log.Info("the listed player count is: %d", count);
@@ -214,7 +249,6 @@ ICommand* FromToml(const toml::table& from) {
 
 
 
-const size_t MAX_HOST = 128;
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------
 // Parse the address of the form [host]:port into host (ip) and port.
