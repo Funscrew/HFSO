@@ -68,10 +68,12 @@ int RunClient(ICommand* cmd) {
 
   // Open local port + add remote player....
   const int MAX_PLAYERS = 2;
-  CSimHFSOClient client(MAX_PLAYERS);
-  client.Init(blaster);
+  CClientOptions ops;
+  ops.MaxPlayers = MAX_PLAYERS;
+  CSimHFSOClient client(ops, blaster);
 
 
+  // Crete + add a local player.
   {
     CPlayer p;
     CreateLocalPlayer("Bob", 0, &p);
@@ -79,10 +81,8 @@ int RunClient(ICommand* cmd) {
     Log.Info("A player was added!");
   }
 
-
-
+  // Let's make a remote player now...
   {
-    // Let's make a remote player now...
     char host[MAX_HOST];
     uint16_t port;
     ParseAddress(useCmd->RemotePlayers[0].data(), (char*)(&host), &port);
@@ -90,8 +90,14 @@ int RunClient(ICommand* cmd) {
     CPlayer r;
     CreateRemotePlayer("Dave", 1, host, port, &r);
     client.AddPlayer(r);
+
     Log.Info("A remote player was added!");
   }
+
+  // Now we begin!
+  client.Begin();
+
+  // client.
 
   // sockaddr_in    _peer_addr;
 //  _peer_addr.sin_family = AF_INET;

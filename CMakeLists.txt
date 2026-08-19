@@ -20,6 +20,8 @@ set(HFSO_SOURCES
     src/CClient.cpp
     src/IClockSource.hpp
     src/Platform.h
+    src/CHFSOEndpoint.h
+    src/CHFSOEndpoint.cpp
 )
 
 

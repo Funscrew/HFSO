@@ -1,11 +1,17 @@
 #pragma once
 
 #include <stdint.h>
-
-#include "IClockSource.hpp"
 #include <vector>
 
+#include "IClockSource.hpp"
+#include "CHFSOEndpoint.h"
+
 constexpr int MAX_PACKET_SIZE = 4000;
+
+// The very upper limit of players that will be supported!
+constexpr int MAX_MAX_PLAYERS = 2;
+
+typedef uint16_t milliseconds;
 
 namespace funscrew::HFSO
 {
@@ -74,52 +80,94 @@ namespace funscrew::HFSO
   };
 
   // ============================================================================================================
-  struct CPlayer {
+  enum class EClientState {
+    /// <summary>
+    /// Client is being being setup.
+    /// </summary>
+    Init = 0,
+    Starting,
+    Active,
+    Stopping,
 
     /// <summary>
-    /// The name of the player.
+    /// The client has completed all operations.
     /// </summary>
-    std::string Name;
+    Complete
+  };
+
+  // ============================================================================================================
+  struct CClientOptions {
+    uint8_t MaxPlayers;
 
     /// <summary>
-    /// Zero based index for each player.  0 == player 1, 1 == player 2 and so on.
-    /// Negative numbers can be used for implementation specific reasons.
+    /// How long do we wait before we time out the connection?
+    /// This applies to all connections, players, appliances, etc.
     /// </summary>
-    int PlayerIndex = -1;
+    milliseconds ConnectTimeout = 5000;
 
-    bool IsLocal = false;
+    /// <summary>
+    /// After connection, how long do we wait before disconnecting an idle connection?
+    /// This applies to all connections, players, appliances, etc.
+    /// </summary>
+    milliseconds IdleTimeout = 2000;
+  };
 
-    // These are used for remote players.
-    // NOTE: If/when we care about ipv6 support (and we should) this is where we will do the updates.
-    sockaddr_in RemoteAddr;
+  class CHFSOClient;
+  struct TestThunk {
+    CHFSOClient* client;
+    
+    void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
+
+
   };
 
   // ============================================================================================================
   // HFPOClient is responsible for managing local and remote connections to other players and services.
   class CHFSOClient
   {
-  private:
-    uint8_t MaxPlayers;
-
   public:
 
-    CHFSOClient(uint8_t maxPlayers_);
+    CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_);
     ~CHFSOClient();
-
-    void Init(IUdpBlaster* udp_);
 
     void AddPlayer(CPlayer& player);
 
+    /// <summary>
+    /// Begin activity on the client.  Connections will be started, etc.
+    /// </summary>
+    void Begin();
+
+    /// <summary>
+    /// End client activity.  This will disconnect all other clients, appliances, etc.
+    /// </summary>
+    void End();
+
+
   protected:
+    CClientOptions _Options;
+
     IUdpBlaster* _Udp = nullptr;
 
-    std::vector<CPlayer> _AllPlayers;
+    EClientState _State = EClientState::Init;
+
+    // std::vector<CPlayer> _AllPlayers;
+
+     //CHFSOEndpoint* _PlayerEndpoints;
+
+    uint8_t PlayerCount = 0;
+    CHFSOEndpoint __AllPlayers[MAX_MAX_PLAYERS];
+
+
+    // Event Handler Functions.
+    void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
 
   private:
+    
 
+    // uint8_t MaxPlayers = 0;
 
-    bool IsInitialized = false;
-    void CheckInit();
+    // bool IsInitialized = false;
+    // void CheckInit();
 
     // Stuff we need...
     // Local Player(s).
@@ -129,13 +177,14 @@ namespace funscrew::HFSO
   };
 
 
+
   // ============================================================================================================
   class CSimHFSOClient : public CHFSOClient {
 
   public:
-    CSimHFSOClient(uint8_t maxPlayers);
+    CSimHFSOClient(CClientOptions& options_, IUdpBlaster* udp_);
 
-    inline uint8_t GetPlayerCount() { return _AllPlayers.size(); }
+    inline uint8_t GetPlayerCount() { return PlayerCount; }
   };
 
 

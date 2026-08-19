@@ -2,11 +2,15 @@
 
 #include <stdexcept>
 #include "errno.h"
+#include <cassert>
+
+#include "CThunk.h"
 
 using namespace funscrew::HFSO;
 const int MIN_PLAYERS = 2;
 
 // ------------------------------------------------------------------------------------------------
+// NOTE: This should go off with the Platform.h code, probably.....
 SOCKET CreateSocket(uint32_t bind_port, int retries)
 {
   SOCKET s;
@@ -100,15 +104,21 @@ CUdpBlaster::~CUdpBlaster() {
 
 
 // ------------------------------------------------------------------------------------------------
-CHFSOClient::CHFSOClient(uint8_t maxPlayers_)
-  : MaxPlayers(maxPlayers_)
+CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_)
+  : _Options(options_)
+  , _Udp(udp_)
 {
-  if (MaxPlayers < MIN_PLAYERS) { 
+  // Validate options.
+  if (_Options.MaxPlayers < MIN_PLAYERS) {
     throw new std::runtime_error("You must have a minimum of two players!");
   }
-  if (MaxPlayers > 2) { 
-    throw new std::runtime_error("This client can only support a max of two players!");
+  if (_Options.MaxPlayers > MAX_MAX_PLAYERS) {
+    // TODO: Formatted string...
+    throw new std::runtime_error("This client can only support a max of MAX_MAX_PLAYERS (2) players!");
   }
+
+
+
 }
 
 
@@ -116,56 +126,111 @@ CHFSOClient::CHFSOClient(uint8_t maxPlayers_)
 CHFSOClient::~CHFSOClient() {}
 
 
-// ------------------------------------------------------------------------------------------------
-void CHFSOClient::Init(IUdpBlaster* udp_)
-{
-  if (IsInitialized) { throw std::runtime_error("Client has already been initialized!"); }
+//// ------------------------------------------------------------------------------------------------
+//void CHFSOClient::Init(IUdpBlaster* udp_)
+//{
+//  if (IsInitialized) { throw std::runtime_error("Client has already been initialized!"); }
+//
+//  _Udp = udp_;
+//  IsInitialized = true;
+//}
 
-  _Udp = udp_;
-  IsInitialized = true;
-}
+//// ------------------------------------------------------------------------------------------------
+//void CHFSOClient::CheckInit() {
+//  if (!IsInitialized) {
+//    throw std::runtime_error("Client is not initialized!");
+//  }
+//}
 
 // ------------------------------------------------------------------------------------------------
-void CHFSOClient::CheckInit() {
-  if (!IsInitialized) {
-    throw std::runtime_error("Client is not initialized!");
-  }
+void CHFSOClient::OnEndpointStateChange(void* sender, CStateChangedArgs& args) {
+  printf("Yo!  I am a handler for an event!\n");
 }
 
 
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::AddPlayer(CPlayer& player)
 {
-  size_t len = _AllPlayers.size();
-  if (len >= MaxPlayers) {
+  bool stateOK = _State == EClientState::Init ||
+    _State == EClientState::Active ||
+    _State == EClientState::Starting;
+
+  if (!stateOK) {
+    throw std::runtime_error("Players can't be added in the current state!");
+  }
+
+  if (PlayerCount >= _Options.MaxPlayers) {
     throw std::runtime_error("Max players exceeded!");
   }
 
-  // TODO: Find a way to validate the addresses depending on the player type....
-  //if (!player.IsLocal && player.RemoteAddr) {
-  //  throw std::runtime_error("Remote players must have an assigned address!");
-  //}
-  //if (player.IsLocal && player.RemoteAddr) { 
-  //  throw std::runtime_error("Local players must not have an assigned address!");
-  //}
-
-  for (size_t i = 0; i < len; i++)
+  int availableIndex = -1;
+  for (size_t i = 0; i < _Options.MaxPlayers; i++)
   {
-    auto& p = _AllPlayers[i];
-    if (player.PlayerIndex == p.PlayerIndex) {
-      throw std::runtime_error("Player index is already in use!");
+    auto& p = __AllPlayers[i];
+    if (p.State() != EEndpointState::Available)
+    {
+      if (player.PlayerIndex == p.Data()->PlayerIndex) {
+        throw std::runtime_error("Player index is already in use!");
+      }
     }
+    else { 
+      if (availableIndex == -1) { availableIndex = i; }
+    }
+    
   }
 
-  _AllPlayers.push_back(player);
+  // TODO: Some better way to do assert like stuff w/ messages..... like the one we had in BigBlock?
+  assert(availableIndex != -1);
+
+  auto& endpoint = __AllPlayers[availableIndex];
+  endpoint.Init(player);
+
+  // Hook the event handlers....
+  // NOTE: We want to keep that thunk instance somewhere....
+  using thunk = CThunk<CHFSOClient, void, void*, CStateChangedArgs&>;
+  auto fn = thunk::Bind(this, &CHFSOClient::OnEndpointStateChange);
+  endpoint.OnStateChanged.Add(fn);
+
+  ++PlayerCount;
+
+  if (_State == EClientState::Active || _State == EClientState::Starting) {
+    // TODO: Start the connection process....
+    endpoint.BeginConnect();
+  }
+
 }
 
 
 
 // ------------------------------------------------------------------------------------------------
-CSimHFSOClient::CSimHFSOClient(uint8_t maxPlayers_)
-  : CHFSOClient(maxPlayers_)
-  {  }
+void CHFSOClient::Begin()
+{
+  if (_State != EClientState::Init) {
+    throw std::runtime_error("Invalid state!");
+  }
+
+  for (size_t i = 0; i < PlayerCount; i++)
+  {
+    __AllPlayers[i].BeginConnect();
+  }
+
+  // Connect all clients:
+}
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::End()
+{
+  throw std::runtime_error("finish me!");
+}
+
+
+
+
+// ------------------------------------------------------------------------------------------------
+CSimHFSOClient::CSimHFSOClient(CClientOptions& ops_, IUdpBlaster* udp_)
+  : CHFSOClient(ops_, udp_)
+{
+}
 
 
 
