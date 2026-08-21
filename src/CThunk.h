@@ -13,7 +13,7 @@ private:
     static TObject* Instance;
     static Method Target;
 
-    static TFunction Invoke(TArgs... args)
+    static TFunction CreateFunctionPointer(TArgs... args)
     {
         return (Instance->*Target)(args...);
     }
@@ -24,7 +24,7 @@ public:
         Instance = instance;
         Target = method;
 
-        return &Invoke;
+        return &CreateFunctionPointer;
     }
 };
 

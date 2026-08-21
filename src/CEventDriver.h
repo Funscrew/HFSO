@@ -21,7 +21,9 @@ namespace funscrew::HFSO
     std::vector<Handler> AllHandlers;
 
   public:
+
     // ----------------------------------------------------------------------------------------------------------------
+    // NOTE: We could set this function up to embed thunks if we wanted....
     void Add(void handler(void* sender, TArgs& args))
     {
       // Search for space!

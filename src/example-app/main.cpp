@@ -97,6 +97,13 @@ int RunClient(ICommand* cmd) {
   // Now we begin!
   client.Begin();
 
+
+  // TODO: Game Loop:
+
+
+
+
+
   // client.
 
   // sockaddr_in    _peer_addr;
@@ -129,6 +136,118 @@ int RunClient(ICommand* cmd) {
 
   return 0;
 }
+
+
+#include <chrono>
+#include <cstdint>
+#include <thread>
+
+// ------------------------------------------------------------------------------------------------------------------------
+int Run()
+{
+  using Clock = std::chrono::steady_clock;
+  using duration = Clock::duration;
+  using Rep = duration::rep;
+
+  constexpr int64_t FPS_SCALE = 100;
+  constexpr int64_t targetFPS = 6000; // 6000 FPS
+
+  const auto sleepInterval = std::chrono::milliseconds(1);
+  const auto busyWaitThreshold = std::chrono::milliseconds(1);
+
+  // Clock ticks per frame are:
+  //
+  //     Duration::period::den * FPS_SCALE
+  //     --------------------------------
+  //     Duration::period::num * targetFPS
+  //
+  // --> ticks per second / (FPS / FPS_SCALE)
+  constexpr int64_t tpfNumerator = duration::period::den * FPS_SCALE;
+  constexpr int64_t tpfDenominator = duration::period::num * targetFPS;
+
+  constexpr Rep wholeTicksPerFrame = static_cast<Rep>(tpfNumerator / tpfDenominator);
+  constexpr int64_t remainderTpf = tpfNumerator % tpfDenominator;
+
+  auto targetTime = Clock::now();
+
+  // Leftover fractional frame time that is carried over.
+  int64_t leftoverTicks = 0;
+
+  bool running = true;
+
+  while (running)
+  {
+    // ------------------------------------------------------------
+    // Advance the target by exactly one rational frame interval.
+    // ------------------------------------------------------------
+    targetTime += duration(wholeTicksPerFrame);
+    leftoverTicks += remainderTpf;
+
+    if (leftoverTicks >= tpfDenominator)
+    {
+      const auto extraTicks = leftoverTicks / tpfDenominator;
+
+      targetTime += duration(static_cast<Rep>(extraTicks));
+      leftoverTicks %= tpfDenominator;
+    }
+
+    // ------------------------------------------------------------
+    // Frame work.
+    // ------------------------------------------------------------
+
+    // ProcessInput();
+    // Update();
+    // Render();
+
+    // ------------------------------------------------------------
+    // Use remaining frame time for background work.
+    // ------------------------------------------------------------
+
+    for (;;)
+    {
+      const auto now = Clock::now();
+
+      if (now >= targetTime)
+      {
+        break;
+      }
+
+      const auto remaining = targetTime - now;
+
+      if (remaining <= busyWaitThreshold)
+      {
+        while (Clock::now() < targetTime)
+        {
+          // Busy wait.
+        }
+
+        break;
+      }
+
+      // Useful background work.
+      //
+      // Idle();
+      // PumpNetwork();
+      // ProcessStreaming();
+      // ProcessBackgroundJobs();
+
+      const auto availableSleepTime =
+        remaining - busyWaitThreshold;
+
+      if (availableSleepTime >= sleepInterval)
+      {
+        std::this_thread::sleep_for(sleepInterval);
+      }
+      else
+      {
+        std::this_thread::sleep_for(availableSleepTime);
+      }
+    }
+  }
+
+  return 0;
+}
+
 
 // ------------------------------------------------------------------------------------------------------------------------
 CommandValidationResult RunCommand::Validate() const {

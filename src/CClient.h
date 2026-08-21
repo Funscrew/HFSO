@@ -112,14 +112,8 @@ namespace funscrew::HFSO
     milliseconds IdleTimeout = 2000;
   };
 
+  // ============================================================================================================
   class CHFSOClient;
-  struct TestThunk {
-    CHFSOClient* client;
-    
-    void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
-
-
-  };
 
   // ============================================================================================================
   // HFPOClient is responsible for managing local and remote connections to other players and services.

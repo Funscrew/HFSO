@@ -45,7 +45,7 @@ namespace funscrew::HFSO {
 
     OnStateChanged.Trigger(this, args);
 
-
+    // Log
     // NOTE: I think that the usual update loop will take care of connecting to peers and all that jazz....
   }
 
