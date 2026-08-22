@@ -5,11 +5,21 @@
 #include "drewCo.Logging.hpp"
 #include "drewCo.CLI.hpp"
 
+#include <chrono>
+#include <cstdint>
+#include <thread>
+
+#include <atomic>
+#include <csignal>
+
 #define DEL(x) { if(x) { delete(x); } }
 
 using namespace funscrew::HFSO;
 using namespace drewCo::Logging;
 using namespace drewCo::CLI;
+
+std::atomic<bool> _IsLoopRunning = true;
+
 
 const size_t MAX_HOST = 128;
 
@@ -30,6 +40,18 @@ ICommand* FromToml(const toml::table& from);
 void ParseAddress(const char* addr, char* host, UINT16* port);
 
 
+
+// ------------------------------------------------------------------------------------------------------------------------
+void InterruptHandler(int signal)
+{
+  if (signal == SIGINT)
+  {
+    Log.Info("signal received!");
+    _IsLoopRunning = false;
+  }
+}
+
+
 // ------------------------------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
 
@@ -38,7 +60,11 @@ int main(int argc, char* argv[]) {
   csl->AddLevel(Levels::Info);
   Log.AddLogger(csl);
 
+  // CTRL+C / other interrupt handling....
+  std::signal(SIGINT, InterruptHandler);
+
   Log.Info("Intializing sockets...");
+
 
   int initOK = Platform::InitSockets();
   if (initOK) { return initOK; }
@@ -54,6 +80,63 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
+
+// ------------------------------------------------------------------------------------------------------------------------
+void RunGameLoop()
+{
+  Log.Info("Starting the game loop.");
+
+  using Clock = std::chrono::steady_clock;
+  using Duration = Clock::duration;
+  using Rep = Duration::rep;
+
+  constexpr int64_t FPS_SCALE = 100;
+  constexpr int64_t targetFPS = 6000; // 60 FPS
+
+  constexpr int64_t tpfNumerator = Duration::period::den * FPS_SCALE;
+  constexpr int64_t tpfDenominator = Duration::period::num * targetFPS;
+
+  constexpr Rep wholeTicksPerFrame = static_cast<Rep>(tpfNumerator / tpfDenominator);
+  constexpr int64_t remainderTpf = tpfNumerator % tpfDenominator;
+
+  auto nextFrameTime = Clock::now();
+  int64_t fractionalAccumulator = 0;
+
+  //  bool running = true;
+
+  while (_IsLoopRunning)
+  {
+    const auto now = Clock::now();
+
+    if (now >= nextFrameTime)
+    {
+      // Advance the ideal frame schedule.
+      nextFrameTime += Duration(wholeTicksPerFrame);
+      fractionalAccumulator += remainderTpf;
+
+      if (fractionalAccumulator >= tpfDenominator)
+      {
+        const auto extraTicks = fractionalAccumulator / tpfDenominator;
+        nextFrameTime += Duration(static_cast<Rep>(extraTicks));
+        fractionalAccumulator %= tpfDenominator;
+      }
+
+      // This is where inputs, etc. would be synced.
+      // ProcessInput();
+      // Update();
+      // Render();
+    }
+    else
+    {
+      // Idle();
+
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
+  Log.Info("Game over.");
+
+}
 
 
 // ------------------------------------------------------------------------------------------------------------------------
@@ -98,30 +181,8 @@ int RunClient(ICommand* cmd) {
   client.Begin();
 
 
-  // TODO: Game Loop:
-
-
-
-
-
-  // client.
-
-  // sockaddr_in    _peer_addr;
-//  _peer_addr.sin_family = AF_INET;
-//_peer_addr.sin_port = htons(port);
-//inet_pton(AF_INET, ip, &_peer_addr.sin_addr.s_addr);
-
-//if (!_peer_addr.sin_addr.s_addr) {
-//  throw std::runtime_error("Invalid peer address!");
-//}
-
-//do {
-//  _magic_number = (uint16)rand();
-//} while (_magic_number == 0);
-//poll.RegisterLoopSink(this);
-
-
-
+  _IsLoopRunning = true;
+  RunGameLoop();
 
 
   uint8_t count = client.GetPlayerCount();
@@ -138,115 +199,6 @@ int RunClient(ICommand* cmd) {
 }
 
 
-#include <chrono>
-#include <cstdint>
-#include <thread>
-
-// ------------------------------------------------------------------------------------------------------------------------
-int Run()
-{
-  using Clock = std::chrono::steady_clock;
-  using duration = Clock::duration;
-  using Rep = duration::rep;
-
-  constexpr int64_t FPS_SCALE = 100;
-  constexpr int64_t targetFPS = 6000; // 6000 FPS
-
-  const auto sleepInterval = std::chrono::milliseconds(1);
-  const auto busyWaitThreshold = std::chrono::milliseconds(1);
-
-  // Clock ticks per frame are:
-  //
-  //     Duration::period::den * FPS_SCALE
-  //     --------------------------------
-  //     Duration::period::num * targetFPS
-  //
-  // --> ticks per second / (FPS / FPS_SCALE)
-  constexpr int64_t tpfNumerator = duration::period::den * FPS_SCALE;
-  constexpr int64_t tpfDenominator = duration::period::num * targetFPS;
-
-  constexpr Rep wholeTicksPerFrame = static_cast<Rep>(tpfNumerator / tpfDenominator);
-  constexpr int64_t remainderTpf = tpfNumerator % tpfDenominator;
-
-  auto targetTime = Clock::now();
-
-  // Leftover fractional frame time that is carried over.
-  int64_t leftoverTicks = 0;
-
-  bool running = true;
-
-  while (running)
-  {
-    // ------------------------------------------------------------
-    // Advance the target by exactly one rational frame interval.
-    // ------------------------------------------------------------
-    targetTime += duration(wholeTicksPerFrame);
-    leftoverTicks += remainderTpf;
-
-    if (leftoverTicks >= tpfDenominator)
-    {
-      const auto extraTicks = leftoverTicks / tpfDenominator;
-
-      targetTime += duration(static_cast<Rep>(extraTicks));
-      leftoverTicks %= tpfDenominator;
-    }
-
-    // ------------------------------------------------------------
-    // Frame work.
-    // ------------------------------------------------------------
-
-    // ProcessInput();
-    // Update();
-    // Render();
-
-    // ------------------------------------------------------------
-    // Use remaining frame time for background work.
-    // ------------------------------------------------------------
-
-    for (;;)
-    {
-      const auto now = Clock::now();
-
-      if (now >= targetTime)
-      {
-        break;
-      }
-
-      const auto remaining = targetTime - now;
-
-      if (remaining <= busyWaitThreshold)
-      {
-        while (Clock::now() < targetTime)
-        {
-          // Busy wait.
-        }
-
-        break;
-      }
-
-      // Useful background work.
-      //
-      // Idle();
-      // PumpNetwork();
-      // ProcessStreaming();
-      // ProcessBackgroundJobs();
-
-      const auto availableSleepTime =
-        remaining - busyWaitThreshold;
-
-      if (availableSleepTime >= sleepInterval)
-      {
-        std::this_thread::sleep_for(sleepInterval);
-      }
-      else
-      {
-        std::this_thread::sleep_for(availableSleepTime);
-      }
-    }
-  }
-
-  return 0;
-}
 
 
 // ------------------------------------------------------------------------------------------------------------------------

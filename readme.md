@@ -19,3 +19,28 @@ cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 
 ### Linux
 TBD
+
+
+
+
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+
+--------------------  
+
+
+NOTE: This is a mermaid diagram.  a demo one, but keeping it here as a reminder as we can maybe use this to explain concepts later?
+```mermaid
+flowchart TD
+    A[Start] --> B{Is it working?}
+    B -->|Yes| C[Great!]
+    B -->|No| D[Debug]
+    D --> B
+    C --> E[Deploy]
+    E --> F[End]
+```
