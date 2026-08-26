@@ -6,6 +6,7 @@
 #include "IClockSource.hpp"
 #include "CHFSOEndpoint.h"
 
+
 constexpr int MAX_PACKET_SIZE = 4000;
 
 // The very upper limit of players that will be supported!
@@ -15,6 +16,7 @@ typedef uint16_t milliseconds;
 
 namespace funscrew::HFSO
 {
+
 
   // ============================================================================================================
   struct CNetworkStats {
@@ -43,7 +45,7 @@ namespace funscrew::HFSO
 
     //int Receive(byte* receiveBuffer, struct sockaddr_in& from);
     int Send(byte* sendBuffer, size_t size, struct sockaddr* to);
-
+    int Receive(byte* buffer,  sockaddr_in* from);
     // virtual ~CUdpBlaster();
 
   protected:
@@ -51,7 +53,7 @@ namespace funscrew::HFSO
     IClockSource* _Clock = nullptr;
 
     // These need to be the 'internal' versions of send + receive.
-    virtual int ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) = 0;
+    virtual int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) = 0;
     virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) = 0;
   };
 
@@ -63,7 +65,7 @@ namespace funscrew::HFSO
     ~CUdpBlaster();
 
   protected:
-    virtual int ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) override;
+    virtual int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) override;
     virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) override;
 
   private:
@@ -113,9 +115,6 @@ namespace funscrew::HFSO
   };
 
   // ============================================================================================================
-  class CHFSOClient;
-
-  // ============================================================================================================
   // HFPOClient is responsible for managing local and remote connections to other players and services.
   class CHFSOClient
   {
@@ -131,6 +130,13 @@ namespace funscrew::HFSO
     /// </summary>
     void Begin();
 
+    // virtual void SyncInputs();
+
+    /// <summary>
+    /// Send / receive / do maintenance.
+    /// </summary>
+    virtual void Idle();
+
     /// <summary>
     /// End client activity.  This will disconnect all other clients, appliances, etc.
     /// </summary>
@@ -138,15 +144,15 @@ namespace funscrew::HFSO
 
 
   protected:
+    byte ReadBuffer[MAX_PACKET_SIZE];
+
+    bool _InRollback = false;
+
     CClientOptions _Options;
 
     IUdpBlaster* _Udp = nullptr;
 
     EClientState _State = EClientState::Init;
-
-    // std::vector<CPlayer> _AllPlayers;
-
-     //CHFSOEndpoint* _PlayerEndpoints;
 
     uint8_t PlayerCount = 0;
     CHFSOEndpoint __AllPlayers[MAX_MAX_PLAYERS];

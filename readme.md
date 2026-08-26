@@ -21,26 +21,38 @@ cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 TBD
 
 
-
-
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-<br />
-
 --------------------  
+NOTE:  
+https://mermaid.ai/open-source/syntax/flowchart.html
 
-
-NOTE: This is a mermaid diagram.  a demo one, but keeping it here as a reminder as we can maybe use this to explain concepts later?
 ```mermaid
+---
+title: Polling Design
+---
 flowchart TD
-    A[Start] --> B{Is it working?}
-    B -->|Yes| C[Great!]
-    B -->|No| D[Debug]
-    D --> B
-    C --> E[Deploy]
-    E --> F[End]
+A[DoPoll]-.->B{In Rollback?}
+B -->|Yes| C[Do nothing]
+B -->|No| X
+
+subgraph X[My Subgraph]
+    direction TB
+    D[Network Receive \n Distribute Messages] -->
+    E["Update Endpoints
+       - update state/data
+       - send data"] -->
+    F[Handle Protocol Events]
+end
+
+
 ```
+
+
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+<br />
+
+

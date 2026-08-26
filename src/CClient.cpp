@@ -83,8 +83,47 @@ CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource* clock_) :
 }
 
 // ------------------------------------------------------------------------------------------------
-int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, struct sockaddr_in& from) {
-  throw std::runtime_error("not implemented!");
+int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) {
+  // throw std::runtime_error("not implemented!");
+
+
+  // GGPO style:
+  uint8_t          recv_buf[MAX_PACKET_SIZE];
+  sockaddr_in    recv_addr;
+  int            recv_addr_len;
+  int len = 0;
+
+  // NOTE: This is all kind of windows specific stuff......
+  for (;;) {
+
+    recv_addr_len = sizeof(recv_addr);
+    len = recvfrom(_Socket, (char*)recv_buf, MAX_PACKET_SIZE, 0, (struct sockaddr*)&recv_addr, &recv_addr_len);
+
+    // TODO: handle len == 0... indicates a disconnect.
+    if (len == -1) {
+      int error = WSAGetLastError();
+      if (error != WSAEWOULDBLOCK) {
+        // Utils::LogIt(CATEGORY_UDP, "recvfrom WSAGetLastError returned %d (%x).", error, error);
+      }
+      break;
+    }
+    else if (len > 0) {
+      // NOTE: We can probably avoid this copy....
+      *from = recv_addr;
+
+      // NOTE: For our implementation, the client is responsible for interpreting the data...
+
+      // char src_ip[1024];
+      // Utils::LogIt(CATEGORY_UDP, "recvfrom returned (len:%d  from:%s:%d).", len, inet_ntop(AF_INET, (void*)&recv_addr.sin_addr, src_ip, ARRAY_SIZE(src_ip)), ntohs(recv_addr.sin_port));
+      // CUdpMsg* msg = (CUdpMsg*)ReadBuffer;
+
+      // This is where we send off the messages to all endpoints that are listening...
+      //_callbacks->OnMsg(recv_addr, msg, len);
+      //++pollCount;
+    }
+  }
+
+  return len;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -173,10 +212,10 @@ void CHFSOClient::AddPlayer(CPlayer& player)
         throw std::runtime_error("Player index is already in use!");
       }
     }
-    else { 
+    else {
       if (availableIndex == -1) { availableIndex = i; }
     }
-    
+
   }
 
   // TODO: Some better way to do assert like stuff w/ messages..... like the one we had in BigBlock?
@@ -215,6 +254,50 @@ void CHFSOClient::Begin()
   }
 
   // Connect all clients:
+}
+
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::Idle() {
+  if (_InRollback) { return; }
+
+  // Receive data from blaster + distribute to endpoints.
+  while (true)
+  {
+    sockaddr_in from;
+    int received = _Udp->Receive(ReadBuffer, &from);
+    if (received > 0) {
+
+      CUdpMsg* msg = (CUdpMsg*)ReadBuffer;
+
+      for (size_t i = 0; i < MAX_MAX_PLAYERS; i++)
+      {
+        __AllPlayers[i].OnMessage(msg, from);
+      }
+    }
+    else {
+      break;
+    }
+  }
+
+  // Process all endpoints now.
+  for (size_t i = 0; i < MAX_MAX_PLAYERS; i++)
+  {
+    __AllPlayers[i].Update();
+  }
+
+
+  // Handle protocol level events.
+
+  // Send data out!
+  // Receive data from network + process messages.
+}
+
+
+// ------------------------------------------------------------------------------------------------
+int IUdpBlaster::Receive(byte* buffer, sockaddr_in* from) {
+  int res = ReceiveImpl(buffer, from);
+  return res;
 }
 
 // ------------------------------------------------------------------------------------------------

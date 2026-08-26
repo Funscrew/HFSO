@@ -20,6 +20,9 @@ using namespace drewCo::CLI;
 
 std::atomic<bool> _IsLoopRunning = true;
 
+CHFSOClient* _Client = nullptr;
+CUdpBlaster* _Blaster = nullptr;
+IClockSource* _Clock = nullptr;
 
 const size_t MAX_HOST = 128;
 
@@ -91,6 +94,8 @@ void RunGameLoop()
   using Rep = Duration::rep;
 
   constexpr int64_t FPS_SCALE = 100;
+
+  // OPTIONS:
   constexpr int64_t targetFPS = 6000; // 60 FPS
 
   constexpr int64_t tpfNumerator = Duration::period::den * FPS_SCALE;
@@ -121,6 +126,8 @@ void RunGameLoop()
         fractionalAccumulator %= tpfDenominator;
       }
 
+      // Log.Info("frame!");
+
       // This is where inputs, etc. would be synced.
       // ProcessInput();
       // Update();
@@ -129,6 +136,7 @@ void RunGameLoop()
     else
     {
       // Idle();
+      _Client->Idle();
 
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
@@ -146,15 +154,16 @@ int RunClient(ICommand* cmd) {
   auto useCmd = (RunCommand*)cmd;
 
   // Init components.  This is where someone could use test / fake stuff for testing.
-  auto clock = new CSystemClock();
-  auto blaster = new CUdpBlaster(useCmd->LocalPort, clock);
+  _Clock = new CSystemClock();
+  _Blaster = new CUdpBlaster(useCmd->LocalPort, _Clock);
 
   // Open local port + add remote player....
   const int MAX_PLAYERS = 2;
   CClientOptions ops;
   ops.MaxPlayers = MAX_PLAYERS;
-  CSimHFSOClient client(ops, blaster);
+  CSimHFSOClient client(ops, _Blaster);
 
+  _Client = new CSimHFSOClient(ops, _Blaster);
 
   // Crete + add a local player.
   {
@@ -192,8 +201,9 @@ int RunClient(ICommand* cmd) {
   // For example purposes, we will attempt to connect to our remote players....
 
   // Cleanup the base components.
-  DEL(blaster);
-  DEL(clock);
+  DEL(_Client);
+  DEL(_Blaster);
+  DEL(_Clock);
 
   return 0;
 }
@@ -321,9 +331,6 @@ ICommand* FromToml(const toml::table& from) {
 
   return res;
 }
-
-
-
 
 
 

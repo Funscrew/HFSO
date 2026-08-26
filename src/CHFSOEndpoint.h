@@ -4,7 +4,7 @@
 #include "Platform.h"
 #include "CEventDriver.h"
 
-// class funscrew::HFSO::CHFSOClient;
+#include "CUdpMsg.h"
 
 namespace funscrew::HFSO
 {
@@ -33,10 +33,16 @@ namespace funscrew::HFSO
   };
 
 
+  // ============================================================================================================
   enum class EEndpointState
   {
     Available = 0,
     Connecting,
+
+    /// <summary>
+    /// Optional state for exchanging game or other specific data between clients.
+    /// </summary>
+    MetadataExchange,
     Connected,
     Disconnecting,
     Disconnected
@@ -62,9 +68,21 @@ namespace funscrew::HFSO
 
   public:
 
-    
+    // Events ====
+    CEventDriver<CStateChangedArgs> OnStateChanged;
+
+    // Properties =
+    inline EEndpointState State() { return _State; }
+    inline CPlayer* Data() { return &_Data; }
+
+
+    // Functions ===
     void Init(CPlayer& data_);
+
+    void OnMessage(const CUdpMsg* msg, const sockaddr_in& from);
     
+    void Update();
+
     /// <summary>
     /// Clear player data + mark as available.
     /// </summary>
@@ -75,11 +93,23 @@ namespace funscrew::HFSO
     /// </summary>
     void BeginConnect();
 
-    inline EEndpointState State() { return _State; }
 
-    inline CPlayer* Data() { return &_Data; }
 
-    CEventDriver<CStateChangedArgs> OnStateChanged;
+    // Message Handlers..
+
+      bool OnInvalid(CUdpMsg* msg, int msgSize);           
+      bool OnSyncRequest(CUdpMsg* msg, int msgSize);       
+      bool OnSyncReply(CUdpMsg* msg, int msgSize);         
+      bool OnInput(CUdpMsg* msg, int msgSize) ;            
+      bool OnQualityReport(CUdpMsg* msg, int msgSize) ;    
+      bool OnQualityReply(CUdpMsg* msg, int msgSize) ;     
+      bool OnKeepAlive(CUdpMsg* msg, int msgSize)  ;       
+
+      //// These might be dropped.....
+      //bool OnInputAck(CUdpMsg* msg, int msgSize) ;         
+      //bool OnData(CUdpMsg* msg, int msgSize);					     
+
+
 
   protected:
     EEndpointState _State = EEndpointState::Available;
