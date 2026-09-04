@@ -1,5 +1,6 @@
 #pragma once
-
+#ifndef CUDP_MSG_H
+#define CUDP_MSG_H
 
 namespace funscrew::HFSO
 {
@@ -9,7 +10,7 @@ namespace funscrew::HFSO
 
   // ============================================================================================================
   struct CUdpMsg {
-    enum MsgType {
+    enum class EMsgType {
       Invalid = 0,
       SyncRequest = 1,
       SyncReply = 2,
@@ -45,3 +46,7 @@ namespace funscrew::HFSO
   };
 
 }
+
+
+#endif
+

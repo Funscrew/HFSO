@@ -93,6 +93,8 @@ namespace drewCo::Logging
         // -----------------------------------------------------------------------------------
         void WriteIt(CSTRING level, const char* fmt, va_list args)
         {
+            if (_Loggers.size() == 0) { return; }
+          
             int bufSize = bufferSize(fmt, args);
 
             // NOTE: We could have some kind of static buffer that grows to meet the current largest
@@ -142,7 +144,7 @@ namespace drewCo::Logging
         }
     };
 
-    static CLogMgr Log;
+    // extern static CLogMgr Log;
 }
 
 #endif

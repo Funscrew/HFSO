@@ -22,6 +22,8 @@ set(HFSO_SOURCES
     src/Platform.h
     src/CHFSOEndpoint.h
     src/CHFSOEndpoint.cpp
+    src/NetworkTests.h
+    src/NetworkTests.cpp
 )
 
 

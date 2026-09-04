@@ -12,11 +12,15 @@
 #include <atomic>
 #include <csignal>
 
+#include "NetworkTests.h"
+
+
 #define DEL(x) { if(x) { delete(x); } }
 
 using namespace funscrew::HFSO;
 using namespace drewCo::Logging;
 using namespace drewCo::CLI;
+using namespace HFSO::Tests;
 
 std::atomic<bool> _IsLoopRunning = true;
 
@@ -25,6 +29,9 @@ CUdpBlaster* _Blaster = nullptr;
 IClockSource* _Clock = nullptr;
 
 const size_t MAX_HOST = 128;
+
+CLogMgr Log;
+
 
 // ========================================================================================================================
 class RunCommand : public ICommand {
@@ -67,6 +74,12 @@ int main(int argc, char* argv[]) {
   std::signal(SIGINT, InterruptHandler);
 
   Log.Info("Intializing sockets...");
+
+
+  // Let's run some tests here.....
+  CanConnectClients();
+
+  return 0;
 
 
   int initOK = Platform::InitSockets();
@@ -212,6 +225,7 @@ int RunClient(ICommand* cmd) {
 
 
 // ------------------------------------------------------------------------------------------------------------------------
+// TODO: Add the actual validation code!
 CommandValidationResult RunCommand::Validate() const {
   CommandValidationResult res;
 
