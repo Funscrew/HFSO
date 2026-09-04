@@ -34,7 +34,7 @@ public:
 
 // ============================================================================================================
 // A clock that we can use to simulate the passage of time, to whatever we want.
-class SimClock : public IClockSource {
+class CSimClock : public IClockSource {
 private:
   int _CurTime = 0;
   int _LastTime = 0;

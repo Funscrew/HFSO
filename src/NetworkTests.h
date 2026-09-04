@@ -2,10 +2,17 @@
 #pragma once
 
 #include "drewCo.Logging.hpp"
+#include "CClient.h"
+
+using namespace funscrew::HFSO;
 
 extern drewCo::Logging::CLogMgr Log;
 
+
+
+
 namespace HFSO::Tests
 {
+    void InitTests();
     void CanConnectClients();
 }

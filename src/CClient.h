@@ -69,17 +69,10 @@ namespace funscrew::HFSO
     virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) override;
 
   private:
-
     uint16_t _Port = 0;
     Socket _Socket = 0;
   };
 
-  // ============================================================================================================
-  // A simulated UDP client for sending / receiving simulated udp traffic.
-  // Used in testing scenarios when we want to be able to reliably recreate certain network conditions.
-  class CSimUdpBlaster : IUdpBlaster {
-
-  };
 
   // ============================================================================================================
   enum class EClientState {

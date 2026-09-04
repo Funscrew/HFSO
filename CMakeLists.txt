@@ -22,8 +22,6 @@ set(HFSO_SOURCES
     src/Platform.h
     src/CHFSOEndpoint.h
     src/CHFSOEndpoint.cpp
-    src/NetworkTests.h
-    src/NetworkTests.cpp
 )
 
 
@@ -47,6 +45,8 @@ set (EXAMPLE_SOURCES
     src/toml.hpp
     src/drewCo.Logging.hpp
     src/drewCo.CLI.hpp
+    src/NetworkTests.h
+    src/NetworkTests.cpp
 )
 
 add_executable(example-app
