@@ -12,7 +12,7 @@ using namespace funscrew::HFSO;
 
 struct CMsg {
 public:
-    CMsg(sockaddr& from, sockaddr& to, const byte* data, size_t size);
+    CMsg(sockaddr_in& from, sockaddr_in& to, const byte* data, size_t size);
     ~CMsg();
 
     sockaddr_in From;
@@ -53,12 +53,14 @@ private:
     IClockSource* _Clock = nullptr;
     std::list<CMsg*> _Messages;
 
-    // Get the link options between the two addresses.
-    // Not that from/to do not matter as they will describe the same link as long as
-    // they are the same permutation of addresses.
-    CLinkOptions& GetLinkOptions(const sockaddr_in& from, const sockaddr_in& to);
+    /// <summary>
+    /// Get the expected delivery time for the packet.  This takes the link options into account.
+    /// A return value of -1 means that the packet will be dropped!
+    /// </summary>
+    int GetDeliveryTime(const sockaddr_in& from, const sockaddr_in& to);
 
     std::list<CLinkOptions> _LinkOptions;
+
 
 };
 
@@ -77,3 +79,7 @@ protected:
 
     CSimNetwork _Network;
 };
+
+
+
+bool AreSame(const sockaddr_in& l, const sockaddr_in& r);

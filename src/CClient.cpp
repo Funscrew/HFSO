@@ -7,6 +7,8 @@
 #include "CThunk.h"
 
 using namespace funscrew::HFSO;
+// using namespace drewCo::Logging;
+
 const int MIN_PLAYERS = 2;
 
 // ------------------------------------------------------------------------------------------------
@@ -156,7 +158,11 @@ CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_)
     throw new std::runtime_error("This client can only support a max of MAX_MAX_PLAYERS (2) players!");
   }
 
-
+  memset(InputBuffer, 0, MAX_INPUT_DATA_SIZE);
+  InputDataSize = _Options.MaxPlayers * _Options.InputDataSize;
+  if (InputDataSize > MAX_INPUT_DATA_SIZE) { 
+    throw std::runtime_error("Input data size exceeds memory size!");
+  }
 
 }
 
@@ -288,11 +294,26 @@ void CHFSOClient::Idle() {
 
 
   // Handle protocol level events.
-
+  // Log.Info
+  // TODO: Get the logging into place....
   // Send data out!
   // Receive data from network + process messages.
 }
 
+// ------------------------------------------------------------------------------------------------
+bool CHFSOClient::SyncInput() { 
+
+  // TODO: Actually implement this...
+  return true;
+}
+
+// ------------------------------------------------------------------------------------------------
+void  const CHFSOClient::IncrementFrame() {
+  // TODO: Do the frame increment!
+  if (_State != EClientState::Active) { return; }
+
+
+}
 
 // ------------------------------------------------------------------------------------------------
 int IUdpBlaster::Receive(byte* buffer, sockaddr_in* from) {
@@ -322,6 +343,11 @@ CSimHFSOClient::CSimHFSOClient(CClientOptions& ops_, IUdpBlaster* udp_)
 
 
 
+// ------------------------------------------------------------------------------------------------------------------------
+sockaddr_in funscrew::HFSO::CreateAddr(const std::string ip, uint16_t port)
+{
+  return CreateAddr(ip.data(), port);
+}
 
 // ------------------------------------------------------------------------------------------------------------------------
 sockaddr_in funscrew::HFSO::CreateAddr(const char* ip, uint16_t port)
@@ -343,8 +369,8 @@ sockaddr_in funscrew::HFSO::CreateAddr(const char* ip, uint16_t port)
 void funscrew::HFSO::CreateLocalPlayer(const char* name, uint16_t playerIndex, CPlayer* __target)
 {
   __target->IsLocal = true;
-  __target->Name = name,
-    __target->PlayerIndex = playerIndex;
+  __target->Name = name;
+  __target->PlayerIndex = playerIndex;
   // __target->Magic = GetMagic();
 }
 
@@ -352,7 +378,7 @@ void funscrew::HFSO::CreateLocalPlayer(const char* name, uint16_t playerIndex, C
 void funscrew::HFSO::CreateRemotePlayer(const char* name, uint16_t playerIndex, const char* ip, uint16_t port, CPlayer* __target)
 {
   __target->PlayerIndex = playerIndex;
-  __target->IsLocal = false,
-    __target->Name = name,
-    __target->RemoteAddr = CreateAddr(ip, port);
+  __target->IsLocal = false;
+  __target->Name = name;
+  // __target->RemoteAddr = CreateAddr(ip, port);
 }

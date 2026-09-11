@@ -144,7 +144,6 @@ namespace drewCo::Logging
         }
     };
 
-    // extern static CLogMgr Log;
 }
 
 #endif

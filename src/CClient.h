@@ -7,7 +7,10 @@
 #include "CHFSOEndpoint.h"
 
 
-constexpr int MAX_PACKET_SIZE = 4000;
+constexpr size_t MAX_PACKET_SIZE = 4000;
+
+// NOTE: This should be HUGE.  For example, ideal CPS3 input size for two players will be four bytes.
+constexpr size_t MAX_INPUT_DATA_SIZE = 0xFF;
 
 // The very upper limit of players that will be supported!
 constexpr int MAX_MAX_PLAYERS = 2;
@@ -45,7 +48,7 @@ namespace funscrew::HFSO
 
     //int Receive(byte* receiveBuffer, struct sockaddr_in& from);
     int Send(byte* sendBuffer, size_t size, struct sockaddr* to);
-    int Receive(byte* buffer,  sockaddr_in* from);
+    int Receive(byte* buffer, sockaddr_in* from);
     // virtual ~CUdpBlaster();
 
   protected:
@@ -92,7 +95,16 @@ namespace funscrew::HFSO
 
   // ============================================================================================================
   struct CClientOptions {
+    /// <summary>
+    /// The max number of players in the game.
+    /// </summary>
     uint8_t MaxPlayers;
+
+    /// <summary>
+    /// Per-Player input data size.
+    /// </summary>
+    uint8_t InputDataSize = 0xFF;
+
 
     /// <summary>
     /// How long do we wait before we time out the connection?
@@ -116,6 +128,10 @@ namespace funscrew::HFSO
     CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_);
     ~CHFSOClient();
 
+    bool IsSynchronizing() const { return _IsSynchronizing; }
+    byte* GetInputBuffer(size_t& maxInputDataSize);
+
+
     void AddPlayer(CPlayer& player);
 
     /// <summary>
@@ -123,12 +139,17 @@ namespace funscrew::HFSO
     /// </summary>
     void Begin();
 
-    // virtual void SyncInputs();
-
     /// <summary>
     /// Send / receive / do maintenance.
     /// </summary>
     virtual void Idle();
+
+    /// <summary>
+    /// Sync the inputs from the local + remote players.
+    /// </summary>
+    /// <returns></returns>
+    virtual bool SyncInput();
+    virtual void const IncrementFrame();
 
     /// <summary>
     /// End client activity.  This will disconnect all other clients, appliances, etc.
@@ -138,8 +159,11 @@ namespace funscrew::HFSO
 
   protected:
     byte ReadBuffer[MAX_PACKET_SIZE];
+    byte InputBuffer[MAX_INPUT_DATA_SIZE];
+    size_t InputDataSize;
 
     bool _InRollback = false;
+    bool _IsSynchronizing = false;
 
     CClientOptions _Options;
 
@@ -155,7 +179,7 @@ namespace funscrew::HFSO
     void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
 
   private:
-    
+
 
     // uint8_t MaxPlayers = 0;
 
@@ -182,7 +206,11 @@ namespace funscrew::HFSO
 
 
   // Free functions...
+  sockaddr_in CreateAddr(const std::string host, uint16_t port);
   sockaddr_in CreateAddr(const char* ip, uint16_t port);
   void CreateLocalPlayer(const char* name, uint16_t playerIndex, CPlayer* __target);
   void CreateRemotePlayer(const char* name, uint16_t playerIndex, const char* ip, uint16_t port, CPlayer* __target);
+
+
+
 }

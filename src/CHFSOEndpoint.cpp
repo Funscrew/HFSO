@@ -77,7 +77,7 @@ namespace funscrew::HFSO {
     if (_Data.IsLocal || _State == EEndpointState::Available) { return; }
 
     // Make sure that the message is for us.
-    auto& _peer_addr = _Data.RemoteAddr;
+    auto& _peer_addr = _RemoteAddr;
     bool isForMe = _peer_addr.sin_addr.S_un.S_addr == from.sin_addr.S_un.S_addr &&
       _peer_addr.sin_port == from.sin_port;
 

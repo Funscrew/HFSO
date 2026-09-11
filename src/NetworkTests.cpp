@@ -8,28 +8,210 @@ using namespace drewCo::Logging;
 
 namespace HFSO::Tests
 {
-    // NOTE: This must be run before ALL tests.
-    void InitTests() { 
-        //int initOK = Platform::InitSockets();
-        //if (!initOK) { throw std::runtime_error("Could not initialize sockets!"); }
+  // ----------------------------------------------------------------------------------------------------------------
+  // NOTE: This must be run before ALL tests.
+  void InitTests() {
+    //int initOK = Platform::InitSockets();
+    //if (!initOK) { throw std::runtime_error("Could not initialize sockets!"); }
+  }
+
+
+  // ----------------------------------------------------------------------------------------------------------------
+  void CanConnectClients() {
+
+    CTestContext context;
+    SetupDefaultTestContext(context);
+
+    // run a loop....
+    context.RunGame(100);
+
+
+    int x = 10;
+
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  void SetupDefaultTestContext(CTestContext& context)
+  {
+    // Add local + remote player....
+    CPlayer local;
+    local.IsLocal = true;
+    local.Name = "Screwie";
+    local.PlayerIndex = 0;
+    local.Host = "127.0.0.1";
+    local.Port = 5000;
+
+    CPlayer remote;
+    remote.IsLocal = false;
+    remote.Name = "Dave";
+    remote.PlayerIndex = 1;
+    remote.Host = "127.0.0.1";
+    remote.Port = 5001;
+
+    CSetupOptions ops;
+    ops.P1 = local;
+    ops.P2 = remote;
+    ops.InputSize = 5;
+
+    SetupTestContext(context, ops);
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  void SetupTestContext(CTestContext& context, const CSetupOptions& setupOps)
+  {
+    CClientOptions ops;
+    ops.MaxPlayers = setupOps.PlayerCount;
+    ops.InputDataSize = 5;        // This is default input size for FBNEO.
+
+    context.Clock1 = new CSimClock();
+    context.Blaster1 = new CSimUdpBlaster(setupOps.P1.Port, context.Clock1);
+    context.Client1 = new CSimHFSOClient(ops, context.Blaster1);
+
+    // TODO: A setup option to use different clocks:
+    context.Clock2 = setupOps.UseSameClock ? context.Clock1 : new CSimClock();
+    context.Blaster2 = new CSimUdpBlaster(setupOps.P2.Port, context.Clock2);
+    context.Client2 = new CSimHFSOClient(ops, context.Blaster2);
+
+    context.AllClients[0] = context.Client1;
+    context.AllClients[1] = context.Client2;
+
+    // Now add the players:
+    {
+      CPlayer local = setupOps.P1;
+      local.IsLocal = true;
+
+      CPlayer remote = setupOps.P2;
+      remote.IsLocal = false;
+
+      context.Client1->AddPlayer(local);
+      context.Client1->AddPlayer(remote);
+    }
+    {
+      CPlayer local = setupOps.P2;
+      local.IsLocal = true;
+
+      CPlayer remote = setupOps.P1;
+      remote.IsLocal = false;
+      context.Client2->AddPlayer(local);
+      context.Client2->AddPlayer(remote);
     }
 
-    // ----------------------------------------------------------------------------------------------------------------
-    void CanConnectClients() { 
-        // Log.Info("I am doing a test!");
+  }
 
-        // OPTIONS:
-        uint16_t localPort = 5000;
-        uint16_t remotePort = 5001;
 
-        auto clock = new CSimClock();
-        auto blaster = new CSimUdpBlaster(localPort, clock);
+  // ----------------------------------------------------------------------------------------------------------------
+  const int TIME_INTERVAL = 1;
+  void  CTestContext::RunGame(int totalTime, std::function<void(byte*, int, int)>* setInputs) 
+  {
+    for (int curTime = 0; curTime < totalTime; curTime++)
+    {
+      RunStep(TIME_INTERVAL, setInputs);
+    }
+  }
 
+  // ----------------------------------------------------------------------------------------------------------------
+  const int FRAME_INTERVAL = 16;
+  void CTestContext::RunStep(int interval, std::function<void(byte*, int, int)>* setInputs)
+  {
+    // NOTE: We have to do something about when there are different clocks.....
+    Clock1->AddTime(interval);
+    int curTime = Clock1->GetTime();
+
+    //if (ReplayAppliance != null)
+    //{
+    //  ReplayAppliance.Update();
+    //}
+
+    if (curTime % FRAME_INTERVAL == 0)
+    {
+      // This is where a normal game frame would be processed.
+      // TODO: I want to change the inputs per frame.  Data doesn't matter, just that it can be exchanged.
+      // int len = ;  // HINT: (Client1 + Client2).Count;
+      for (int clientIndex = 0; clientIndex < ClientCount; clientIndex++)
+      {
+        auto client = AllClients[clientIndex];
+
+        if (setInputs)
+        {
+          (*setInputs)(nullptr, 1, 2); //  (InputBuffers[clientIndex], client.GetLocalPlayer().PlayerIndex, curTime);
+        }
+
+        RunFrame(client); //, clientIndex, TotalInputDataSize);
+
+        ++LastFrame;
+      }
 
     }
+    else
+    {
+      // TODO: A proper idle() function.....    (see Program.cs for example)
+      // This is where we would send out the player inputs and so on....
+      for (int j = 0; j < ClientCount; j++)
+      {
+        auto c = AllClients[j];
+        c->Idle();
+      }
+    }
+  }
 
-    // ----------------------------------------------------------------------------------------------------------------
 
-    // ----------------------------------------------------------------------------------------------------------------
+  // ------------------------------------------------------------------------------------------------------
+  bool CTestContext::RunFrame(CHFSOClient* client)
+  {
+    if (!client->IsSynchronizing())
+    {
+      bool syncOK = client->SyncInput(); ///testInput, INPUT_SIZE, GGPOConsts.MAX_PLAYERS);
+
+      // Tell the client that we have moved ahead one frame.
+      if (syncOK)
+      {
+        client->IncrementFrame();
+      }
+      return syncOK;
+    }
+
+    return false;
+  }
+
+  //// ------------------------------------------------------------------------------------------------------
+  //public static bool RunFrame(GGPOClient c, byte[] testInput)
+  //{
+  //  if (!c._synchronizing)
+  //  {
+  //    bool syncOK = c.SyncInput(testInput, INPUT_SIZE, GGPOConsts.MAX_PLAYERS);
+
+  //    // Tell the client that we have moved ahead one frame.
+  //    if (syncOK)
+  //    {
+  //      c.IncrementFrame();
+  //    }
+  //    return syncOK;
+  //  }
+  //  return false;
+  //}
+
+
+
+  // ----------------------------------------------------------------------------------------------------------------
+  CTestContext::~CTestContext() {
+    DEL(Clock1);
+    DEL(Blaster1);
+    DEL(Clock2);
+    DEL(Blaster2);
+    DEL(Client1);
+    DEL(Client2);
+  }
+
 
 }
+
+//{
+
+//  // The total number of 'frames' that we want to simulate in this case.
+//  //  const int MAX_FRAMES = 50;
+//  for (int curTime = 0; curTime < totalTime; curTime++)
+//  {
+//    RunStep(TIME_INTERVAL);
+//  }
+
+//}

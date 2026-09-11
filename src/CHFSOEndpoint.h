@@ -25,9 +25,12 @@ namespace funscrew::HFSO
 
     bool IsLocal = false;
 
+    std::string Host;
+    uint16_t Port;
+
     // These are used for remote players.
     // NOTE: If/when we care about ipv6 support (and we should) this is where we will do the updates.
-    struct sockaddr_in RemoteAddr;
+    // struct sockaddr_in RemoteAddr;
 
     //CHFSOEndpoint* Endpoint = nullptr;
   };
@@ -116,7 +119,7 @@ namespace funscrew::HFSO
 
     // Don't write to it!
     CPlayer _Data;
-
+    sockaddr_in _RemoteAddr;
 
   };
 
