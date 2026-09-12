@@ -24,7 +24,7 @@ namespace funscrew::HFSO {
 
 
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnInvalid(CUdpMsg* msg, int msgSize) 
+  bool CHFSOEndpoint::OnInvalid(CUdpMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
@@ -101,6 +101,11 @@ namespace funscrew::HFSO {
     case EEndpointState::MetadataExchange:
 
     case EEndpointState::Connected:
+
+
+    case EEndpointState::Disconnected:
+      // DO NOTHING:  We aren't connected!
+      break;
 
     default:
       throw std::runtime_error("This state is not supported!");

@@ -82,6 +82,7 @@ CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource* clock_) :
   , _Port(port_)
 {
   _Socket = CreateSocket(_Port, 3);
+  _Addr = CreateAddr("127.0.0.1", _Port);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -352,7 +353,7 @@ sockaddr_in funscrew::HFSO::CreateAddr(const std::string ip, uint16_t port)
 // ------------------------------------------------------------------------------------------------------------------------
 sockaddr_in funscrew::HFSO::CreateAddr(const char* ip, uint16_t port)
 {
-  sockaddr_in    res;
+  sockaddr_in res;
   res.sin_family = AF_INET;
   res.sin_port = htons(port);
   inet_pton(AF_INET, ip, &res.sin_addr.s_addr);

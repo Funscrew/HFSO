@@ -38,7 +38,7 @@ namespace funscrew::HFSO
 
   // ============================================================================================================
   // Represents a UDP connection.
-    // Such connections can be real, or simulated.
+  // Such connections can be real, or simulated.
   class IUdpBlaster {
 
   public:
@@ -49,11 +49,12 @@ namespace funscrew::HFSO
     //int Receive(byte* receiveBuffer, struct sockaddr_in& from);
     int Send(byte* sendBuffer, size_t size, struct sockaddr* to);
     int Receive(byte* buffer, sockaddr_in* from);
-    // virtual ~CUdpBlaster();
 
   protected:
 
     IClockSource* _Clock = nullptr;
+
+    sockaddr_in _Addr;
 
     // These need to be the 'internal' versions of send + receive.
     virtual int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) = 0;

@@ -1,6 +1,8 @@
 #include "CSimUdpBlaster.h"
 
 #include "drewCo.Logging.hpp"
+#include <climits>
+
 extern drewCo::Logging::CLogMgr Log;
 
 // --------------------------------------------------------------------------------
@@ -23,12 +25,21 @@ CMsg::~CMsg() {
 CSimUdpBlaster::CSimUdpBlaster(uint16_t port_, IClockSource* clock_)
   : IUdpBlaster(clock_)
   , _Network(clock_)
-{ }
+{
+  _Addr = CreateAddr("127.0.0.1", port_);
+}
 
 // --------------------------------------------------------------------------------
 int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
 {
-  throw std::runtime_error("not implemented!");
+  const CMsg* next = _Network.GetNext(_Addr);
+  if (next)
+  {
+    memcpy(receiveBuffer, next->Data, next->Size);
+    *from = next->From;
+    return next->Size;
+  }
+  return 0;
 }
 
 // --------------------------------------------------------------------------------
@@ -40,7 +51,46 @@ int CSimUdpBlaster::SendImpl(byte* sendBuffer, size_t size, sockaddr* to)
 // --------------------------------------------------------------------------------
 CSimNetwork::CSimNetwork(IClockSource* clock_)
   : _Clock(clock_)
-{ }
+{
+}
+
+// --------------------------------------------------------------------------------
+const CMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
+  // throw std::runtime_error("please finish me!");
+
+  // This is us pulling data from the message queue....
+  int minTime = INT_MAX;
+  CMsg* res = nullptr;
+
+  int curTime = _Clock->GetTime(); // udp.Clock.CurTime;
+
+  // Grab all messages in the queue up to the current time.
+  // only include those messages that have the matching port...
+  // SimUdpMessage? toRemove = null;
+  int index = -1;
+  size_t len = _Messages.size();
+
+  std::list<CMsg*>::iterator toRemove;
+  for (auto it = _Messages.begin(); it != _Messages.end(); it++)
+  {
+    CMsg* next = *it;
+    if (next->ReceiveTime <= curTime &&
+      next->ReceiveTime <= minTime &&
+      AreSame(next->To, forAddr))
+      {
+        toRemove = it;
+        res = next;
+        minTime = res->ReceiveTime;
+      }
+  }
+  if (res) { 
+    _Messages.erase(toRemove);
+  }
+
+  return res;
+
+
+}
 
 // --------------------------------------------------------------------------------
 void CSimNetwork::Send(sockaddr_in& from, sockaddr_in& to, byte* data, size_t dataSize)
@@ -59,7 +109,6 @@ void CSimNetwork::Send(sockaddr_in& from, sockaddr_in& to, byte* data, size_t da
 
 // --------------------------------------------------------------------------------
 // TODO: Share
-// TODO: Aggressive inline?
 bool AreSame(const sockaddr_in& l, const sockaddr_in& r)
 {
   return l.sin_addr.S_un.S_addr == r.sin_addr.S_un.S_addr &&

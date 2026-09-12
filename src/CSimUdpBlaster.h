@@ -18,9 +18,8 @@ public:
     sockaddr_in From;
     sockaddr_in To;
 
-    uint64_t DeliverTime;   // When we expect it to arrive.
-
-private:
+    // When we expect it to arrive.
+    uint64_t ReceiveTime;   
 
     byte* Data = nullptr;
     size_t Size = 0;
@@ -46,7 +45,7 @@ class CSimNetwork {
 public:
     CSimNetwork(IClockSource* clock_);
 
-    const CMsg* GetNext();
+    const CMsg* GetNext(sockaddr_in& forAddr);
     void Send(sockaddr_in& from, sockaddr_in& to, byte* data, size_t dataSize);
 
 private:
