@@ -38,6 +38,7 @@ namespace HFSO::Tests
     ~CTestContext();
 
     // NOTE: Eventually these will become arrays when we try testing with more than two players.
+    bool UseSameClock = false;
     CSimClock* Clock1 = nullptr;
     CSimUdpBlaster* Blaster1 = nullptr;
 

@@ -63,12 +63,13 @@ namespace HFSO::Tests
     ops.MaxPlayers = setupOps.PlayerCount;
     ops.InputDataSize = 5;        // This is default input size for FBNEO.
 
+    context.UseSameClock = setupOps.UseSameClock;
     context.Clock1 = new CSimClock();
     context.Blaster1 = new CSimUdpBlaster(setupOps.P1.Port, context.Clock1);
     context.Client1 = new CSimHFSOClient(ops, context.Blaster1);
 
     // TODO: A setup option to use different clocks:
-    context.Clock2 = setupOps.UseSameClock ? context.Clock1 : new CSimClock();
+    context.Clock2 = context.UseSameClock ? context.Clock1 : new CSimClock();
     context.Blaster2 = new CSimUdpBlaster(setupOps.P2.Port, context.Clock2);
     context.Client2 = new CSimHFSOClient(ops, context.Blaster2);
 
@@ -101,7 +102,7 @@ namespace HFSO::Tests
 
   // ----------------------------------------------------------------------------------------------------------------
   const int TIME_INTERVAL = 1;
-  void  CTestContext::RunGame(int totalTime, std::function<void(byte*, int, int)>* setInputs) 
+  void  CTestContext::RunGame(int totalTime, std::function<void(byte*, int, int)>* setInputs)
   {
     for (int curTime = 0; curTime < totalTime; curTime++)
     {
@@ -194,7 +195,12 @@ namespace HFSO::Tests
 
   // ----------------------------------------------------------------------------------------------------------------
   CTestContext::~CTestContext() {
+
     DEL(Clock1);
+    if (UseSameClock) {
+      Clock2 = nullptr;
+    }
+
     DEL(Blaster1);
     DEL(Clock2);
     DEL(Blaster2);
