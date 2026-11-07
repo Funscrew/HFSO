@@ -1,11 +1,14 @@
 #pragma once
 
+#ifndef CCLIENT_H
+#define CCLIENT_H
+
 #include <stdint.h>
 #include <vector>
+#include <random>
 
 #include "IClockSource.hpp"
 #include "CHFSOEndpoint.h"
-
 
 constexpr size_t MAX_PACKET_SIZE = 4000;
 
@@ -84,12 +87,24 @@ namespace funscrew::HFSO
     /// Client is being being setup.
     /// </summary>
     Init = 0,
+
+    /// <summary>
+    ///  Starting?  Not really sure the difference between start and init?  Init is probably just getting the networking stuff initialized?
+    /// </summary>
     Starting,
+
+    /// <summary>
+    /// The client is connected to its peer.
+    /// </summary>
     Active,
+
+    /// <summary>
+    /// The client is stopping / shutting down / disconnecting.
+    /// </summary>
     Stopping,
 
     /// <summary>
-    /// The client has completed all operations.
+    /// The client has completed all operations.  Safe to deconstruct.
     /// </summary>
     Complete
   };
@@ -126,10 +141,12 @@ namespace funscrew::HFSO
   {
   public:
 
-    CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_);
+    CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSeed = -1);
     ~CHFSOClient();
 
     bool IsSynchronizing() const { return _IsSynchronizing; }
+    inline EClientState State()  const { return _State; }
+
     byte* GetInputBuffer(size_t& maxInputDataSize);
 
 
@@ -138,7 +155,7 @@ namespace funscrew::HFSO
     /// <summary>
     /// Begin activity on the client.  Connections will be started, etc.
     /// </summary>
-    void Begin();
+    void Start();
 
     /// <summary>
     /// Send / receive / do maintenance.
@@ -157,6 +174,10 @@ namespace funscrew::HFSO
     /// </summary>
     void End();
 
+    /// <summary>
+    /// Get a random number.  Used by endpoints for certain operations.
+    /// </summary>
+    uint32_t RandInt();
 
   protected:
     byte ReadBuffer[MAX_PACKET_SIZE];
@@ -175,9 +196,11 @@ namespace funscrew::HFSO
     uint8_t PlayerCount = 0;
     CHFSOEndpoint __AllPlayers[MAX_MAX_PLAYERS];
 
+    std::mt19937 _RNG;
 
     // Event Handler Functions.
     void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
+    void SetState(EClientState newState);
 
   private:
 
@@ -200,7 +223,7 @@ namespace funscrew::HFSO
   class CSimHFSOClient : public CHFSOClient {
 
   public:
-    CSimHFSOClient(CClientOptions& options_, IUdpBlaster* udp_);
+    CSimHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSeed);
 
     inline uint8_t GetPlayerCount() { return PlayerCount; }
   };
@@ -211,7 +234,7 @@ namespace funscrew::HFSO
   sockaddr_in CreateAddr(const char* ip, uint16_t port);
   void CreateLocalPlayer(const char* name, uint16_t playerIndex, CPlayer* __target);
   void CreateRemotePlayer(const char* name, uint16_t playerIndex, const char* ip, uint16_t port, CPlayer* __target);
-
-
-
 }
+
+
+#endif // !CCLIENT_H

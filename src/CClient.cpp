@@ -7,7 +7,6 @@
 #include "CThunk.h"
 
 using namespace funscrew::HFSO;
-// using namespace drewCo::Logging;
 
 const int MIN_PLAYERS = 2;
 
@@ -146,7 +145,7 @@ CUdpBlaster::~CUdpBlaster() {
 
 
 // ------------------------------------------------------------------------------------------------
-CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_)
+CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSeed)
   : _Options(options_)
   , _Udp(udp_)
 {
@@ -165,6 +164,13 @@ CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_)
     throw std::runtime_error("Input data size exceeds memory size!");
   }
 
+  if (rngSeed != -1) {
+    _RNG.seed(rngSeed);
+  }
+  else { 
+    std::random_device rd;
+    _RNG.seed(rd());
+  }
 }
 
 
@@ -229,7 +235,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
   assert(availableIndex != -1);
 
   auto& endpoint = __AllPlayers[availableIndex];
-  endpoint.Init(player);
+  endpoint.Init(player, this);
 
   // Hook the event handlers....
   // NOTE: We want to keep that thunk instance somewhere....
@@ -239,17 +245,21 @@ void CHFSOClient::AddPlayer(CPlayer& player)
 
   ++PlayerCount;
 
-  if (_State == EClientState::Active || _State == EClientState::Starting) {
-    // TODO: Start the connection process....
-    endpoint.BeginConnect();
-  }
+  //// I'm thinking that the best way is to do 'BeginConnect' when we are adding the remote player?
+  //// What about 3+ player games tho?  I don't really want to get too deep in the weeds, but I don't
+  //// want to box us out?  fuck it, we are 'starting' when we added the local player, and we only 
+  //// try to connect after we are hooking up the remote player.
+  //if (_State == EClientState::Active || _State == EClientState::Starting) {
+  //  // TODO: Start the connection process....
+  //  endpoint.BeginConnect();
+  //}
 
 }
 
 
 
 // ------------------------------------------------------------------------------------------------
-void CHFSOClient::Begin()
+void CHFSOClient::Start()
 {
   if (_State != EClientState::Init) {
     throw std::runtime_error("Invalid state!");
@@ -260,7 +270,15 @@ void CHFSOClient::Begin()
     __AllPlayers[i].BeginConnect();
   }
 
+  SetState(EClientState::Starting);
+
   // Connect all clients:
+}
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::SetState(EClientState newState)
+{
+  _State = newState;
 }
 
 
@@ -328,14 +346,17 @@ void CHFSOClient::End()
   throw std::runtime_error("finish me!");
 }
 
-
+// ------------------------------------------------------------------------------------------------
+uint32_t CHFSOClient::RandInt() {
+  auto res = _RNG();
+  return res;
+}
 
 
 // ------------------------------------------------------------------------------------------------
-CSimHFSOClient::CSimHFSOClient(CClientOptions& ops_, IUdpBlaster* udp_)
-  : CHFSOClient(ops_, udp_)
-{
-}
+CSimHFSOClient::CSimHFSOClient(CClientOptions& ops_, IUdpBlaster* udp_, int rngSeed)
+  : CHFSOClient(ops_, udp_, rngSeed)
+{ }
 
 
 

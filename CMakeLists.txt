@@ -47,6 +47,8 @@ set (EXAMPLE_SOURCES
     src/drewCo.CLI.hpp
     src/NetworkTests.h
     src/NetworkTests.cpp
+    src/CSimUdpBlaster.h
+    src/CSimUdpBlaster.cpp
 )
 
 add_executable(example-app

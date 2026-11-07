@@ -1,7 +1,5 @@
 #include "CHFSOEndpoint.h"
-//#include "CClient.h"
-
-
+#include "CClient.h"
 
 
 namespace funscrew::HFSO {
@@ -21,7 +19,6 @@ namespace funscrew::HFSO {
      //&CHFSOEndpoint::OnInputAck,            /* InputAck */
      //&CHFSOEndpoint::OnData					       /* Data Exchange - A chat message or other type of data was received */
   };
-
 
   // -------------------------------------------------------------------------------------------------------------
   bool CHFSOEndpoint::OnInvalid(CUdpMsg* msg, int msgSize)
@@ -61,11 +58,11 @@ namespace funscrew::HFSO {
 
 
   // -------------------------------------------------------------------------------------------------------------
-  void CHFSOEndpoint::Init(CPlayer& data_) {
+  void CHFSOEndpoint::Init(CPlayer& data_, CHFSOClient* parent_) {
     if (_State != EEndpointState::Available) {
       throw std::runtime_error("Can't initialize an endpoint that isn't available!");
     }
-
+    _Parent = parent_;
     _Data = data_;
     _State = EEndpointState::Disconnected;
   }
@@ -89,6 +86,7 @@ namespace funscrew::HFSO {
   }
 
   // -------------------------------------------------------------------------------------------------------------
+  // NOTE: OnLoopPoll
   void CHFSOEndpoint::Update() {
     // Local / open endpoints don't need to update.
     if (_Data.IsLocal || _State == EEndpointState::Available) { return; }
@@ -98,14 +96,15 @@ namespace funscrew::HFSO {
       // Continue to exchange sync packets:
       // Once we are synced we can proceed to metadata exchange...
 
-    case EEndpointState::MetadataExchange:
-
-    case EEndpointState::Connected:
-
-
-    case EEndpointState::Disconnected:
-      // DO NOTHING:  We aren't connected!
       break;
+    // case EEndpointState::MetadataExchange:
+
+    // case EEndpointState::Connected:
+
+
+    //case EEndpointState::Disconnected:
+    //  // DO NOTHING:  We aren't connected!
+    //  break;
 
     default:
       throw std::runtime_error("This state is not supported!");
@@ -146,6 +145,11 @@ namespace funscrew::HFSO {
 
     // Log
     // NOTE: I think that the usual update loop will take care of connecting to peers and all that jazz....
+    _ConnectData.LocalMagic = _Parent->RandInt();
+
+    // We probably need to send a packet here, and think about metadata exchange type stuff.
+
+    throw std::exception("please complete this code path!");
   }
 
 

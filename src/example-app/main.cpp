@@ -162,6 +162,8 @@ void RunGameLoop()
 
 // ------------------------------------------------------------------------------------------------------------------------
 int RunClient(ICommand* cmd) {
+  std::exception("this code is stale... not 100% what is going on with it....");
+
   Log.Info("Running it!");
 
   auto useCmd = (RunCommand*)cmd;
@@ -174,9 +176,9 @@ int RunClient(ICommand* cmd) {
   const int MAX_PLAYERS = 2;
   CClientOptions ops;
   ops.MaxPlayers = MAX_PLAYERS;
-  CSimHFSOClient client(ops, _Blaster);
+  CSimHFSOClient client(ops, _Blaster, 12345);
 
-  _Client = new CSimHFSOClient(ops, _Blaster);
+  _Client = new CSimHFSOClient(ops, _Blaster, 12345);
 
   // Crete + add a local player.
   {
@@ -200,7 +202,7 @@ int RunClient(ICommand* cmd) {
   }
 
   // Now we begin!
-  client.Begin();
+  client.Start();
 
 
   _IsLoopRunning = true;

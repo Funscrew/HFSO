@@ -6,8 +6,19 @@
 using namespace drewCo::Logging;
 
 
+const int RNG_SEED_1 = 12345;
+const int RNG_SEED_2 = 67890;
+
+
 namespace HFSO::Tests
 {
+  template <typename T>
+  void AssertEqual(T l, T r) { 
+    if (l != r)  {
+      throw std::exception("Values are not equal!");
+    }
+  }
+
   // ----------------------------------------------------------------------------------------------------------------
   // NOTE: This must be run before ALL tests.
   void InitTests() {
@@ -24,6 +35,18 @@ namespace HFSO::Tests
 
     // run a loop....
     context.RunGame(100);
+
+    // Now we have to make sure that the clients are actually connected.....
+    auto c1 = context.Client1;
+    EClientState s1 = c1->State();
+    AssertEqual(s1, EClientState::Active);
+
+    //if (s1 != EClientState::Active) {
+    //  throw std::exception("Client one state should be active!");
+    //}
+
+    auto c2 = context.Client2;
+
 
 
     int x = 10;
@@ -66,12 +89,12 @@ namespace HFSO::Tests
     context.UseSameClock = setupOps.UseSameClock;
     context.Clock1 = new CSimClock();
     context.Blaster1 = new CSimUdpBlaster(setupOps.P1.Port, context.Clock1);
-    context.Client1 = new CSimHFSOClient(ops, context.Blaster1);
+    context.Client1 = new CSimHFSOClient(ops, context.Blaster1, RNG_SEED_1);
 
     // TODO: A setup option to use different clocks:
     context.Clock2 = context.UseSameClock ? context.Clock1 : new CSimClock();
     context.Blaster2 = new CSimUdpBlaster(setupOps.P2.Port, context.Clock2);
-    context.Client2 = new CSimHFSOClient(ops, context.Blaster2);
+    context.Client2 = new CSimHFSOClient(ops, context.Blaster2, RNG_SEED_2);
 
     context.AllClients[0] = context.Client1;
     context.AllClients[1] = context.Client2;
@@ -86,7 +109,9 @@ namespace HFSO::Tests
 
       context.Client1->AddPlayer(local);
       context.Client1->AddPlayer(remote);
+      context.Client1->Start();
     }
+
     {
       CPlayer local = setupOps.P2;
       local.IsLocal = true;
@@ -95,7 +120,11 @@ namespace HFSO::Tests
       remote.IsLocal = false;
       context.Client2->AddPlayer(local);
       context.Client2->AddPlayer(remote);
+
+      // NOTE: We could add some kind of start delay here too?
+      context.Client2->Start();
     }
+
 
   }
 
