@@ -72,7 +72,7 @@ namespace funscrew::HFSO {
     }
 
     // ------------------------------------------------------------------------------------------------------------
-    virtual uint16_t DataSize() {
+    uint16_t DataSize() {
       switch (Header.Type) {
       case EMsgType::SyncRequest:
       {

@@ -67,6 +67,8 @@ namespace funscrew::HFSO {
     _UDP = _Parent->UDP();
     _Data = data_;
     _State = EEndpointState::Disconnected;
+
+    _RemoteAddr = CreateAddr(_Data.Host, _Data.Port);
   }
 
   // -------------------------------------------------------------------------------------------------------------
@@ -158,8 +160,13 @@ namespace funscrew::HFSO {
   void CHFSOEndpoint::SendSyncMessage() {
     CMsg msg(EMsgType::SyncRequest);
 
+
+
     auto& rq = msg.Content.SyncRequest;
     rq.SessionId = _Parent->SessionId();
+    
+    // TEMP:
+    rq.LastAckSequence = 0;
 
     _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize);
 
@@ -170,6 +177,10 @@ namespace funscrew::HFSO {
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::SendMsg(CMsg* msg) {
 
+    // TEMP:  Fill in real logic later!
+    msg->Header.Magic = 0;
+    msg->Header.Sequence = 0;
+
     // TODO: Relocate network stats to this class!
     Stats.packets_sent++;
     Stats.LastTimeSent = _UDP->Clock()->GetTime(); // _Clock->GetTime();
@@ -177,7 +188,7 @@ namespace funscrew::HFSO {
     auto size = msg->PacketSize();
     Stats.bytes_sent += size;
 
-    _UDP->Send((byte*)(&msg->Content), size, (struct sockaddr*)&_RemoteAddr);
+    _UDP->Send((byte*)(msg), size, (struct sockaddr*)&_RemoteAddr);
     //_NetStats.PacketsSent++;
     //_NetStats.LastSendTime = _Parent.Get
 

@@ -84,6 +84,10 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
 
   int curTime = _Clock->GetTime(); // udp.Clock.CurTime;
 
+  //if (curTime >= 5) { 
+  //  int x = 10;
+  //}
+
   // Grab all messages in the queue up to the current time.
   // only include those messages that have the matching port...
   // SimUdpMessage? toRemove = null;
@@ -94,10 +98,10 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
   for (auto it = _Messages.begin(); it != _Messages.end(); it++)
   {
     CSimMsg* next = *it;
-      bool same = AreSame(next->To, forAddr);
-      if (same)  {
-        int x = 10;
-      }
+      //bool same = AreSame(next->To, forAddr);
+      //if (same)  {
+      //  int x = 10;
+      //}
    if (next->ReceiveTime <= curTime &&
       next->ReceiveTime <= minTime &&
       AreSame(next->To, forAddr))
@@ -119,8 +123,10 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
 // --------------------------------------------------------------------------------
 void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t dataSize)
 {
+  // TEMP:
   if (AreSame(from, *to)){
-    throw std::runtime_error("loopback detected!");
+    // throw std::runtime_error("loopback detected!");
+    printf("loopback detected!\n");
   }
 
   auto curTime = _Clock->GetTime();
@@ -138,6 +144,9 @@ void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t da
   if (deliveryTime != -1) {
     auto msg = new CSimMsg(from, to, data, dataSize);
     msg->ReceiveTime = deliveryTime;
+    msg->Data = data;
+    msg->Size = dataSize;
+
     _Messages.push_back(msg);
   }
   else {
