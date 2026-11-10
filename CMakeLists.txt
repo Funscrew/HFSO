@@ -50,6 +50,8 @@ set (EXAMPLE_SOURCES
     src/NetworkTests.cpp
     src/CSimUdpBlaster.h
     src/CSimUdpBlaster.cpp
+    src/CUdpBlaster.h
+    src/CUdpBlaster.cpp
 )
 
 add_executable(example-app
