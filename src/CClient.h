@@ -9,8 +9,8 @@
 
 #include "IClockSource.hpp"
 #include "CHFSOEndpoint.h"
+#include "CUdpBlaster.h"
 
-constexpr size_t MAX_PACKET_SIZE = 4000;
 
 // NOTE: This should be HUGE.  For example, ideal CPS3 input size for two players will be four bytes.
 constexpr size_t MAX_INPUT_DATA_SIZE = 0xFF;
@@ -22,63 +22,6 @@ typedef uint16_t milliseconds;
 
 namespace funscrew::HFSO
 {
-
-
-  // ============================================================================================================
-  struct CNetworkStats {
-    int      bytes_sent = 0;
-    int      packets_sent = 0;
-
-    int      BytesReceived = 0;
-    int      PacketsReceived = 0;
-    float    KbpsReceived = 0;
-
-    float    kbps_sent = 0.0f;
-
-    // NEW: how long has client been active for?
-    int       Uptime = 0.0;
-  };
-
-  // ============================================================================================================
-  // Represents a UDP connection.
-  // Such connections can be real, or simulated.
-  class IUdpBlaster {
-
-  public:
-    CNetworkStats Stats;
-
-    IUdpBlaster(IClockSource* clock_);
-
-    //int Receive(byte* receiveBuffer, struct sockaddr_in& from);
-    int Send(byte* sendBuffer, size_t size, struct sockaddr* to);
-    int Receive(byte* buffer, sockaddr_in* from);
-
-  protected:
-
-    IClockSource* _Clock = nullptr;
-
-    sockaddr_in _Addr;
-
-    // These need to be the 'internal' versions of send + receive.
-    virtual int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) = 0;
-    virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) = 0;
-  };
-
-  // ============================================================================================================
-  class CUdpBlaster : public IUdpBlaster {
-
-  public:
-    CUdpBlaster(uint16_t port_, IClockSource* clock_);
-    ~CUdpBlaster();
-
-  protected:
-    virtual int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) override;
-    virtual int SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) override;
-
-  private:
-    uint16_t _Port = 0;
-    Socket _Socket = 0;
-  };
 
 
   // ============================================================================================================
@@ -133,6 +76,8 @@ namespace funscrew::HFSO
     /// This applies to all connections, players, appliances, etc.
     /// </summary>
     milliseconds IdleTimeout = 2000;
+
+    uint64_t SessionId = 0;
   };
 
   // ============================================================================================================
@@ -146,6 +91,8 @@ namespace funscrew::HFSO
 
     bool IsSynchronizing() const { return _IsSynchronizing; }
     inline EClientState State()  const { return _State; }
+    inline uint64_t SessionId() const { return _Options.SessionId; }
+    inline IUdpBlaster* UDP() const { return _Udp; }
 
     byte* GetInputBuffer(size_t& maxInputDataSize);
 
@@ -179,6 +126,12 @@ namespace funscrew::HFSO
     /// </summary>
     uint32_t RandInt();
 
+    /// <summary>
+    /// Get the data that is needed for sync.  This is application defined.
+    /// By default, player names are exchanged.
+    /// </summary>
+    virtual void GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize);
+
   protected:
     byte ReadBuffer[MAX_PACKET_SIZE];
     byte InputBuffer[MAX_INPUT_DATA_SIZE];
@@ -197,6 +150,8 @@ namespace funscrew::HFSO
     CHFSOEndpoint __AllPlayers[MAX_MAX_PLAYERS];
 
     std::mt19937 _RNG;
+
+    // uint64_t _SessionId = 0;
 
     // Event Handler Functions.
     void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
@@ -230,8 +185,6 @@ namespace funscrew::HFSO
 
 
   // Free functions...
-  sockaddr_in CreateAddr(const std::string host, uint16_t port);
-  sockaddr_in CreateAddr(const char* ip, uint16_t port);
   void CreateLocalPlayer(const char* name, uint16_t playerIndex, CPlayer* __target);
   void CreateRemotePlayer(const char* name, uint16_t playerIndex, const char* ip, uint16_t port, CPlayer* __target);
 }

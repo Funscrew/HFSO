@@ -22,6 +22,7 @@ set(HFSO_SOURCES
     src/Platform.h
     src/CHFSOEndpoint.h
     src/CHFSOEndpoint.cpp
+    src/CMsg.h
 )
 
 

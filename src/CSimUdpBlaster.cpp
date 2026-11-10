@@ -6,7 +6,10 @@
 extern drewCo::Logging::CLogMgr Log;
 
 // --------------------------------------------------------------------------------
-CMsg::CMsg(sockaddr_in& from, sockaddr_in& to, const byte* data, size_t size) {
+CSimMsg::CSimMsg(sockaddr_in& from, sockaddr_in* to, const byte* data, size_t size)
+  :From(from),
+  To(*to)
+{
   Data = (byte*)malloc(size);
   if (!Data) {
     throw std::runtime_error("Could not allocate data for CMsg");
@@ -15,7 +18,7 @@ CMsg::CMsg(sockaddr_in& from, sockaddr_in& to, const byte* data, size_t size) {
 }
 
 // --------------------------------------------------------------------------------
-CMsg::~CMsg() {
+CSimMsg::~CSimMsg() {
   if (Data) {
     free(Data);
   }
@@ -32,7 +35,7 @@ CSimUdpBlaster::CSimUdpBlaster(uint16_t port_, IClockSource* clock_)
 // --------------------------------------------------------------------------------
 int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
 {
-  const CMsg* next = _Network.GetNext(_Addr);
+  const CSimMsg* next = _Network.GetNext(_Addr);
   if (next)
   {
     memcpy(receiveBuffer, next->Data, next->Size);
@@ -45,7 +48,24 @@ int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
 // --------------------------------------------------------------------------------
 int CSimUdpBlaster::SendImpl(byte* sendBuffer, size_t size, sockaddr* to)
 {
-  throw std::runtime_error("not implemented!");
+  _Network.Send(_Addr, reinterpret_cast<sockaddr_in*>(to), sendBuffer, size);
+  return size;
+
+  // CSimMsg toSend(_Addr, (sockaddr_in*)to, sendBuffer, size);
+
+  //auto curTime = _Clock->GetTime();
+
+  //int deliveryTime = GetDeliveryTime(from, to);
+  //if (deliveryTime != -1) {
+  //  auto msg = new CSimMsg(from, to, data, dataSize);
+  //  _Messages.push_back(msg);
+  //}
+  //else {
+  //  Log.Info("Simulated dropped packet!");
+  //}
+
+
+  //throw std::runtime_error("not implemented!");
 }
 
 // --------------------------------------------------------------------------------
@@ -55,12 +75,12 @@ CSimNetwork::CSimNetwork(IClockSource* clock_)
 }
 
 // --------------------------------------------------------------------------------
-const CMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
+const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
   // throw std::runtime_error("please finish me!");
 
   // This is us pulling data from the message queue....
   int minTime = INT_MAX;
-  CMsg* res = nullptr;
+  CSimMsg* res = nullptr;
 
   int curTime = _Clock->GetTime(); // udp.Clock.CurTime;
 
@@ -70,20 +90,24 @@ const CMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
   int index = -1;
   size_t len = _Messages.size();
 
-  std::list<CMsg*>::iterator toRemove;
+  std::list<CSimMsg*>::iterator toRemove;
   for (auto it = _Messages.begin(); it != _Messages.end(); it++)
   {
-    CMsg* next = *it;
-    if (next->ReceiveTime <= curTime &&
+    CSimMsg* next = *it;
+      bool same = AreSame(next->To, forAddr);
+      if (same)  {
+        int x = 10;
+      }
+   if (next->ReceiveTime <= curTime &&
       next->ReceiveTime <= minTime &&
       AreSame(next->To, forAddr))
-      {
-        toRemove = it;
-        res = next;
-        minTime = res->ReceiveTime;
-      }
+    {
+      toRemove = it;
+      res = next;
+      minTime = res->ReceiveTime;
+    }
   }
-  if (res) { 
+  if (res) {
     _Messages.erase(toRemove);
   }
 
@@ -93,13 +117,27 @@ const CMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
 }
 
 // --------------------------------------------------------------------------------
-void CSimNetwork::Send(sockaddr_in& from, sockaddr_in& to, byte* data, size_t dataSize)
+void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t dataSize)
 {
+  if (AreSame(from, *to)){
+    throw std::runtime_error("loopback detected!");
+  }
+
   auto curTime = _Clock->GetTime();
 
-  int deliveryTime = GetDeliveryTime(from, to);
+  // TODO: This is where we will simulate packet loss...
+  // bool hasLinkOptions = 
+  CLinkOptions* ops = nullptr;
+  auto it = _LinkOptions.find({ from, *to });
+  if (it != _LinkOptions.end())
+  {
+    ops = &it->second;
+  }
+
+  int deliveryTime = curTime + ComputePing(ops);
   if (deliveryTime != -1) {
-    auto msg = new CMsg(from, to, data, dataSize);
+    auto msg = new CSimMsg(from, to, data, dataSize);
+    msg->ReceiveTime = deliveryTime;
     _Messages.push_back(msg);
   }
   else {
@@ -117,25 +155,37 @@ bool AreSame(const sockaddr_in& l, const sockaddr_in& r)
 
 // --------------------------------------------------------------------------------
 // NOTE Could be faster if I could figure out direct pointer / reference return.
-int CSimNetwork::GetDeliveryTime(const sockaddr_in& from, const sockaddr_in& to)
+// Or acutally, a hash of the addresses + map.....
+int CSimNetwork::ComputePing(const CLinkOptions* ops)
 {
-  for (auto it = _LinkOptions.begin(); it != _LinkOptions.end(); it++) {
-    if ((AreSame(it->From, from) && AreSame(it->To, to)) ||
-      (AreSame(it->To, from) && AreSame(it->From, to)))
-    {
-      // TODO: Take jitter into account.
-      // TODO: Some kind of mechanism to simulate jitter spikes... probably a manual update to the link options....
-      if (it->Jitter != 0) { throw new std::runtime_error("nonzero jitter is not supported!"); }
+  int usePing = AvgPing;
+  int useJitter = AvgJitter;
 
-      // TODO: Some way to simulate packet loss.  NOTE: I also want a way to simulate packet loss in the real clients so that we can experiment in real life!
-
-      // OK: 
-      auto now = _Clock->GetTime();
-      int res = now + it->Ping;
-      return res;
-    }
+  if (ops) {
+    throw std::runtime_error("not implemented!");
   }
 
-  throw std::runtime_error("Could not find the link options for the given addresses!");
+  return usePing;
+
+  // TODO: Use the jitter when computing....
+
+  //for (auto it = _LinkOptions.begin(); it != _LinkOptions.end(); it++) {
+  //  if ((AreSame(it->From, from) && AreSame(it->To, to)) ||
+  //    (AreSame(it->To, from) && AreSame(it->From, to)))
+  //  {
+  //    // TODO: Take jitter into account.
+  //    // TODO: Some kind of mechanism to simulate jitter spikes... probably a manual update to the link options....
+  //    if (it->Jitter != 0) { throw new std::runtime_error("nonzero jitter is not supported!"); }
+
+  //    // TODO: Some way to simulate packet loss.  NOTE: I also want a way to simulate packet loss in the real clients so that we can experiment in real life!
+
+  //    // OK: 
+  //    auto now = _Clock->GetTime();
+  //    int res = now + it->Ping;
+  //    return res;
+  //  }
+  //}
+
+ //  throw std::runtime_error("Could not find the link options for the given addresses!");
 
 }

@@ -1,10 +1,11 @@
 #include "CHFSOEndpoint.h"
 #include "CClient.h"
+#include "CMsg.h"
 
 
 namespace funscrew::HFSO {
 
-  typedef bool (CHFSOEndpoint::* DispatchFn)(CUdpMsg* msg, int msgSize);
+  typedef bool (CHFSOEndpoint::* DispatchFn)(CMsg* msg, int msgSize);
 
   // NOTE:  A table of function pointers is used so that the values from UdpMsg::MsgType
   // can be used to index into this.
@@ -21,54 +22,55 @@ namespace funscrew::HFSO {
   };
 
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnInvalid(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnInvalid(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnSyncRequest(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnSyncRequest(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnSyncReply(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnSyncReply(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnInput(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnInput(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnQualityReport(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnQualityReport(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnQualityReply(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnQualityReply(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
-  bool CHFSOEndpoint::OnKeepAlive(CUdpMsg* msg, int msgSize)
+  bool CHFSOEndpoint::OnKeepAlive(CMsg* msg, int msgSize)
   {
     throw std::runtime_error("not supported!");
   }
 
 
   // -------------------------------------------------------------------------------------------------------------
-  void CHFSOEndpoint::Init(CPlayer& data_, CHFSOClient* parent_) {
+  void CHFSOEndpoint::Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_) {
     if (_State != EEndpointState::Available) {
       throw std::runtime_error("Can't initialize an endpoint that isn't available!");
     }
     _Parent = parent_;
+    _UDP = _Parent->UDP();
     _Data = data_;
     _State = EEndpointState::Disconnected;
   }
 
   // -------------------------------------------------------------------------------------------------------------
-  void CHFSOEndpoint::OnMessage(const CUdpMsg* msg, const sockaddr_in& from) {
+  void CHFSOEndpoint::OnMessage(const CMsg* msg, const sockaddr_in& from) {
 
     // Local / open endpoints don't handle messages.
     if (_Data.IsLocal || _State == EEndpointState::Available) { return; }
@@ -97,14 +99,14 @@ namespace funscrew::HFSO {
       // Once we are synced we can proceed to metadata exchange...
 
       break;
-    // case EEndpointState::MetadataExchange:
+      // case EEndpointState::MetadataExchange:
 
-    // case EEndpointState::Connected:
+      // case EEndpointState::Connected:
 
 
-    //case EEndpointState::Disconnected:
-    //  // DO NOTHING:  We aren't connected!
-    //  break;
+      //case EEndpointState::Disconnected:
+      //  // DO NOTHING:  We aren't connected!
+      //  break;
 
     default:
       throw std::runtime_error("This state is not supported!");
@@ -123,7 +125,7 @@ namespace funscrew::HFSO {
   }
 
   // -------------------------------------------------------------------------------------------------------------
-  void  CHFSOEndpoint::BeginConnect() {
+  void CHFSOEndpoint::BeginConnect() {
     if (_State != EEndpointState::Disconnected) {
       throw std::runtime_error("invalid state to begin connection!");
     }
@@ -132,8 +134,6 @@ namespace funscrew::HFSO {
     // We can have an assigned single callback, or we can hook up a whole bunch....
     // Whatever it is, this is certainly one that would be passed up to the parent....
     // So maybe instead of callback we signal the parent directly?
-
-  //  throw std::runtime_error("Figure it out!");
 
     CStateChangedArgs args;
     args.OldState = _State;
@@ -148,9 +148,54 @@ namespace funscrew::HFSO {
     _ConnectData.LocalMagic = _Parent->RandInt();
 
     // We probably need to send a packet here, and think about metadata exchange type stuff.
+    SendSyncMessage();
 
-    throw std::exception("please complete this code path!");
+    // throw std::exception("please complete this code path!");
   }
+
+
+  // -------------------------------------------------------------------------------------------------------------
+  void CHFSOEndpoint::SendSyncMessage() {
+    CMsg msg(EMsgType::SyncRequest);
+
+    auto& rq = msg.Content.SyncRequest;
+    rq.SessionId = _Parent->SessionId();
+
+    _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize);
+
+    SendMsg(&msg);
+  }
+
+
+  // -------------------------------------------------------------------------------------------------------------
+  void CHFSOEndpoint::SendMsg(CMsg* msg) {
+
+    // TODO: Relocate network stats to this class!
+    Stats.packets_sent++;
+    Stats.LastTimeSent = _UDP->Clock()->GetTime(); // _Clock->GetTime();
+
+    auto size = msg->PacketSize();
+    Stats.bytes_sent += size;
+
+    _UDP->Send((byte*)(&msg->Content), size, (struct sockaddr*)&_RemoteAddr);
+    //_NetStats.PacketsSent++;
+    //_NetStats.LastSendTime = _Parent.Get
+
+
+
+  }
+
+  //_packets_sent++;
+  //_last_send_time = Platform::GetCurrentTimeMS();
+  //_bytes_sent += msg->PacketSize();
+
+  //msg->header.magic = _magic_number;
+  //msg->header.sequence_number = _next_send_seq++;
+
+  //_send_queue.push(QueueEntry(Platform::GetCurrentTimeMS(), _peer_addr, msg));
+
+  //Utils::LogMsg(EMsgDirection::Send, msg);
+  //PumpSendQueue();
 
 
 }

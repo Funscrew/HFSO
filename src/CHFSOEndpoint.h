@@ -4,11 +4,13 @@
 #include "Platform.h"
 #include "CEventDriver.h"
 
-#include "CUdpMsg.h"
+#include "CMsg.h"
 
 namespace funscrew::HFSO
 {
   class CHFSOClient;
+//  class CUdpBlaster;
+  class IUdpBlaster;
 
   // ============================================================================================================
   struct CPlayer {
@@ -36,6 +38,29 @@ namespace funscrew::HFSO
     //CHFSOEndpoint* Endpoint = nullptr;
   };
 
+
+  // ============================================================================================================
+  struct CNetworkStats {
+    int      bytes_sent = 0;
+    int      packets_sent = 0;
+
+    /// <summary>
+    /// The last time that a packet was sent...
+    /// </summary>
+    int     LastTimeSent = 0;
+    int     LastReceiveTime = 0;
+
+    int      BytesReceived = 0;
+    int      PacketsReceived = 0;
+
+    float    KbpsReceived = 0;
+    float    kbps_sent = 0.0f;
+
+    // NEW: how long has client been active for?
+    int       Uptime = 0.0;
+
+    int     NextSequence = 0;
+  };
 
   // ============================================================================================================
   enum class EEndpointState
@@ -107,9 +132,9 @@ namespace funscrew::HFSO
 
 
     // Functions ===
-    void Init(CPlayer& data_, CHFSOClient* parent_);
+    void Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_);
 
-    void OnMessage(const CUdpMsg* msg, const sockaddr_in& from);
+    void OnMessage(const CMsg* msg, const sockaddr_in& from);
 
     void Update();
 
@@ -127,22 +152,25 @@ namespace funscrew::HFSO
 
     // Message Handlers..
 
-    bool OnInvalid(CUdpMsg* msg, int msgSize);
-    bool OnSyncRequest(CUdpMsg* msg, int msgSize);
-    bool OnSyncReply(CUdpMsg* msg, int msgSize);
-    bool OnInput(CUdpMsg* msg, int msgSize);
-    bool OnQualityReport(CUdpMsg* msg, int msgSize);
-    bool OnQualityReply(CUdpMsg* msg, int msgSize);
-    bool OnKeepAlive(CUdpMsg* msg, int msgSize);
+    bool OnInvalid(CMsg* msg, int msgSize);
+    bool OnSyncRequest(CMsg* msg, int msgSize);
+    bool OnSyncReply(CMsg* msg, int msgSize);
+    bool OnInput(CMsg* msg, int msgSize);
+    bool OnQualityReport(CMsg* msg, int msgSize);
+    bool OnQualityReply(CMsg* msg, int msgSize);
+    bool OnKeepAlive(CMsg* msg, int msgSize);
 
     //// These might be dropped.....
-    //bool OnInputAck(CUdpMsg* msg, int msgSize) ;         
-    //bool OnData(CUdpMsg* msg, int msgSize);					     
+    //bool OnInputAck(CMsg* msg, int msgSize) ;         
+    //bool OnData(CMsg* msg, int msgSize);					     
 
+
+    CNetworkStats Stats;
 
 
   protected:
     CHFSOClient* _Parent = nullptr;
+    IUdpBlaster* _UDP = nullptr;
 
     EEndpointState _State = EEndpointState::Available;
 
@@ -151,6 +179,9 @@ namespace funscrew::HFSO
     sockaddr_in _RemoteAddr;
 
     ConnectData _ConnectData = {};
+
+    void SendSyncMessage();
+    void SendMsg(CMsg* msg);
 
   };
 
