@@ -2,6 +2,8 @@
 #ifndef CMSG_H
 #define CMSG_H
 
+#pragma pack(push, 1)
+
 namespace funscrew::HFSO {
 
   constexpr uint32_t NON_RELIABLE = 0;
@@ -87,5 +89,7 @@ namespace funscrew::HFSO {
   };
 
 }
+
+#pragma pack(pop)
 
 #endif

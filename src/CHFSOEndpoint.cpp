@@ -69,6 +69,13 @@ namespace funscrew::HFSO {
     _State = EEndpointState::Disconnected;
 
     _RemoteAddr = CreateAddr(_Data.Host, _Data.Port);
+
+    //if (_Data.IsLocal
+    //auto a = _UDP->Addr();
+    //if (AreSame(a, _RemoteAddr)) { 
+    //  int x=  10;
+    //}
+    // if (AreSame(_UDP._Addr
   }
 
   // -------------------------------------------------------------------------------------------------------------
@@ -128,9 +135,17 @@ namespace funscrew::HFSO {
 
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::BeginConnect() {
+
     if (_State != EEndpointState::Disconnected) {
-      throw std::runtime_error("invalid state to begin connection!");
+      throw std::runtime_error("Invalid state to begin connection!");
     }
+
+    // Local players are already connected!
+    if (_Data.IsLocal) {
+      _State = EEndpointState::Connected;
+      return;
+    }
+
 
     // TODO: How do we want to care about eventing and callbacks?
     // We can have an assigned single callback, or we can hook up a whole bunch....
@@ -150,21 +165,19 @@ namespace funscrew::HFSO {
     _ConnectData.LocalMagic = _Parent->RandInt();
 
     // We probably need to send a packet here, and think about metadata exchange type stuff.
-    SendSyncMessage();
+    SendSyncRequest();
 
     // throw std::exception("please complete this code path!");
   }
 
 
   // -------------------------------------------------------------------------------------------------------------
-  void CHFSOEndpoint::SendSyncMessage() {
+  void CHFSOEndpoint::SendSyncRequest() {
     CMsg msg(EMsgType::SyncRequest);
-
-
 
     auto& rq = msg.Content.SyncRequest;
     rq.SessionId = _Parent->SessionId();
-    
+
     // TEMP:
     rq.LastAckSequence = 0;
 
@@ -181,9 +194,9 @@ namespace funscrew::HFSO {
     msg->Header.Magic = 0;
     msg->Header.Sequence = 0;
 
-    // TODO: Relocate network stats to this class!
+    // TODO: Check out other stats that we might like to track.
     Stats.packets_sent++;
-    Stats.LastTimeSent = _UDP->Clock()->GetTime(); // _Clock->GetTime();
+    Stats.LastTimeSent = _UDP->Clock()->GetTime();
 
     auto size = msg->PacketSize();
     Stats.bytes_sent += size;

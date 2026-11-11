@@ -86,14 +86,17 @@ namespace HFSO::Tests
     ops.MaxPlayers = setupOps.PlayerCount;
     ops.InputDataSize = 5;        // This is default input size for FBNEO.
 
-    context.UseSameClock = setupOps.UseSameClock;
-    context.Clock1 = new CSimClock();
-    context.Blaster1 = new CSimUdpBlaster(setupOps.P1.Port, context.Clock1);
+    auto clock = new CSimClock();
+    context.Network = new CSimNetwork(clock);
+
+    // context.UseSameClock = setupOps.UseSameClock;
+    context.Clock1 = clock;
+    context.Blaster1 = new CSimUdpBlaster(setupOps.P1.Port, context.Clock1, context.Network);
     context.Client1 = new CSimHFSOClient(ops, context.Blaster1, RNG_SEED_1);
 
     // TODO: A setup option to use different clocks:
-    context.Clock2 = context.UseSameClock ? context.Clock1 : new CSimClock();
-    context.Blaster2 = new CSimUdpBlaster(setupOps.P2.Port, context.Clock2);
+    // context.Clock2 = context.UseSameClock ? context.Clock1 : new CSimClock();
+    context.Blaster2 = new CSimUdpBlaster(setupOps.P2.Port, clock, context.Network);
     context.Client2 = new CSimHFSOClient(ops, context.Blaster2, RNG_SEED_2);
 
     context.AllClients[0] = context.Client1;
@@ -226,12 +229,13 @@ namespace HFSO::Tests
   CTestContext::~CTestContext() {
 
     DEL(Clock1);
-    if (UseSameClock) {
-      Clock2 = nullptr;
-    }
+    //if (UseSameClock) {
+    //  Clock2 = nullptr;
+    //}
 
+    DEL(Network);
     DEL(Blaster1);
-    DEL(Clock2);
+    // DEL(Clock2);
     DEL(Blaster2);
     DEL(Client1);
     DEL(Client2);

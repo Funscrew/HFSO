@@ -21,7 +21,11 @@ namespace funscrew::HFSO
     int Receive(byte* buffer, sockaddr_in* from);
 
     // NOTE: I don't think that the blaster needs to have the clock.  Should be exposed by the client, probably....
+    // Maybe the sim blaster?
     inline IClockSource* Clock() const { return _Clock; }
+
+    // TEMP:
+    inline sockaddr_in Addr() { return _Addr; }
 
   protected:
 
@@ -59,6 +63,7 @@ namespace funscrew::HFSO
   // Free functions....
   sockaddr_in CreateAddr(const std::string host, uint16_t port);
   sockaddr_in CreateAddr(const char* ip, uint16_t port);
+  bool AreSame(const sockaddr_in& l, const sockaddr_in& r);
 
 }
 #endif // ! CUDPBlaster_H

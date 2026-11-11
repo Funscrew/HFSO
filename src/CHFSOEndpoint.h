@@ -6,6 +6,7 @@
 
 #include "CMsg.h"
 
+
 namespace funscrew::HFSO
 {
   class CHFSOClient;
@@ -180,9 +181,12 @@ namespace funscrew::HFSO
 
     ConnectData _ConnectData = {};
 
-    void SendSyncMessage();
+    void SendSyncRequest();
     void SendMsg(CMsg* msg);
 
   };
 
+
+
+  
 }

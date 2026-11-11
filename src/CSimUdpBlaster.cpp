@@ -25,9 +25,9 @@ CSimMsg::~CSimMsg() {
 }
 
 // --------------------------------------------------------------------------------
-CSimUdpBlaster::CSimUdpBlaster(uint16_t port_, IClockSource* clock_)
+CSimUdpBlaster::CSimUdpBlaster(uint16_t port_, IClockSource* clock_, CSimNetwork* network_)
   : IUdpBlaster(clock_)
-  , _Network(clock_)
+  , _Network(network_)
 {
   _Addr = CreateAddr("127.0.0.1", port_);
 }
@@ -35,7 +35,7 @@ CSimUdpBlaster::CSimUdpBlaster(uint16_t port_, IClockSource* clock_)
 // --------------------------------------------------------------------------------
 int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
 {
-  const CSimMsg* next = _Network.GetNext(_Addr);
+  const CSimMsg* next = _Network->GetNext(_Addr);
   if (next)
   {
     memcpy(receiveBuffer, next->Data, next->Size);
@@ -48,7 +48,7 @@ int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
 // --------------------------------------------------------------------------------
 int CSimUdpBlaster::SendImpl(byte* sendBuffer, size_t size, sockaddr* to)
 {
-  _Network.Send(_Addr, reinterpret_cast<sockaddr_in*>(to), sendBuffer, size);
+  _Network->Send(_Addr, reinterpret_cast<sockaddr_in*>(to), sendBuffer, size);
   return size;
 
   // CSimMsg toSend(_Addr, (sockaddr_in*)to, sendBuffer, size);
@@ -71,8 +71,7 @@ int CSimUdpBlaster::SendImpl(byte* sendBuffer, size_t size, sockaddr* to)
 // --------------------------------------------------------------------------------
 CSimNetwork::CSimNetwork(IClockSource* clock_)
   : _Clock(clock_)
-{
-}
+{ }
 
 // --------------------------------------------------------------------------------
 const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
@@ -84,9 +83,9 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
 
   int curTime = _Clock->GetTime(); // udp.Clock.CurTime;
 
-  //if (curTime >= 5) { 
-  //  int x = 10;
-  //}
+  if (curTime >= 5) { 
+    int x = 10;
+  }
 
   // Grab all messages in the queue up to the current time.
   // only include those messages that have the matching port...
@@ -98,11 +97,13 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
   for (auto it = _Messages.begin(); it != _Messages.end(); it++)
   {
     CSimMsg* next = *it;
-      //bool same = AreSame(next->To, forAddr);
-      //if (same)  {
-      //  int x = 10;
-      //}
-   if (next->ReceiveTime <= curTime &&
+
+    bool same = AreSame(next->To, forAddr);
+    if (same) {
+      int x = 10;
+    }
+
+    if (next->ReceiveTime <= curTime &&
       next->ReceiveTime <= minTime &&
       AreSame(next->To, forAddr))
     {
@@ -124,9 +125,9 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
 void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t dataSize)
 {
   // TEMP:
-  if (AreSame(from, *to)){
-    // throw std::runtime_error("loopback detected!");
-    printf("loopback detected!\n");
+  if (AreSame(from, *to)) {
+    throw std::runtime_error("loopback detected!");
+    // printf("loopback detected!\n");
   }
 
   auto curTime = _Clock->GetTime();
@@ -154,13 +155,6 @@ void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t da
   }
 }
 
-// --------------------------------------------------------------------------------
-// TODO: Share
-bool AreSame(const sockaddr_in& l, const sockaddr_in& r)
-{
-  return l.sin_addr.S_un.S_addr == r.sin_addr.S_un.S_addr &&
-    l.sin_port == r.sin_port;
-}
 
 // --------------------------------------------------------------------------------
 // NOTE Could be faster if I could figure out direct pointer / reference return.

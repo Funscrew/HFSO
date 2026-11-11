@@ -113,16 +113,13 @@ private:
 class CSimUdpBlaster : public IUdpBlaster {
 
 public:
-    CSimUdpBlaster(uint16_t port_, IClockSource* clock_);
+    CSimUdpBlaster(uint16_t port_, IClockSource* clock_, CSimNetwork* network_);
 
 protected:
     // Inherited via IUdpBlaster
     int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) override;
     int SendImpl(byte* sendBuffer, size_t size, sockaddr* to) override;
 
-    CSimNetwork _Network;
+    CSimNetwork* _Network;
 };
 
-
-
-bool AreSame(const sockaddr_in& l, const sockaddr_in& r);

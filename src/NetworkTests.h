@@ -13,6 +13,8 @@ using namespace funscrew::HFSO;
 
 extern drewCo::Logging::CLogMgr Log;
 
+class CSimNetwork;
+
 #define DEL(x) if(x) { delete(x); x = nullptr; }
 
 namespace HFSO::Tests
@@ -37,12 +39,14 @@ namespace HFSO::Tests
   struct CTestContext {
     ~CTestContext();
 
+    CSimNetwork* Network = nullptr;
+
     // NOTE: Eventually these will become arrays when we try testing with more than two players.
-    bool UseSameClock = false;
+    // bool UseSameClock = false;
     CSimClock* Clock1 = nullptr;
     CSimUdpBlaster* Blaster1 = nullptr;
 
-    CSimClock* Clock2 = nullptr;
+    // CSimClock* Clock2 = nullptr;
     CSimUdpBlaster* Blaster2 = nullptr;
 
     CSimHFSOClient* Client1 = nullptr;

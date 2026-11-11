@@ -162,7 +162,7 @@ void RunGameLoop()
 
 // ------------------------------------------------------------------------------------------------------------------------
 int RunClient(ICommand* cmd) {
-  std::exception("this code is stale... not 100% what is going on with it....");
+  throw std::exception("this code is stale... not 100% what is going on with it....");
 
   Log.Info("Running it!");
 

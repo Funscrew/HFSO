@@ -175,3 +175,14 @@ CUdpBlaster::~CUdpBlaster() {
   _Socket = INVALIDSOCKET;
 }
 
+
+namespace funscrew::HFSO
+{
+  // --------------------------------------------------------------------------------
+  // TODO: Share
+  bool AreSame(const sockaddr_in& l, const sockaddr_in& r)
+  {
+    return l.sin_addr.S_un.S_addr == r.sin_addr.S_un.S_addr &&
+      l.sin_port == r.sin_port;
+  }
+}
