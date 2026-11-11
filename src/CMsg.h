@@ -13,7 +13,7 @@ namespace funscrew::HFSO {
   enum EMsgType {
     Invalid = 0,
     SyncRequest = 1,
-    //SyncReply = 2,
+    SyncReply = 2,
     //Input = 3,
     //QualityReport = 4,
     //QualityReply = 5,
@@ -44,12 +44,14 @@ namespace funscrew::HFSO {
 
     union {
       struct {
-        /// <summary>
-        /// The last sequence number that we acknowledged.  This is used to ensure that metadata exchange is complete.
-        /// </summary>
-        uint16_t LastAckSequence;
-
         uint64_t SessionId;
+
+        /// <summary>
+        /// Sequence number specific to sync operations.  All sync numbers must be acked for the connection
+        /// to succeed.
+        /// </summary>
+        int SyncNumber;
+
 
         uint16_t DataSize;
         // Byte array of metadata that you might want to exchange.
@@ -57,6 +59,21 @@ namespace funscrew::HFSO {
         // DataSize == 0 means there is no more metadata!
         uint8_t SyncData[MAX_DATA_SIZE];
       } SyncRequest;
+
+      struct {
+        /// <summary>
+        /// The last sequence number that we acknowledged.  This is used to ensure that metadata exchange is complete.
+        /// Remote will not send new sync requests with differnt numbers before receiving this!
+        /// </summary>
+        uint16_t SyncNumberAck;
+
+        /// <summary>
+        /// Flag to indicate that we are ready and no more sync requests need to be sent!
+        /// I don't know if we really need this or not.....
+        /// </summary>
+        uint8_t Ready;
+      } SyncReply;
+
     } Content;
 
     // ------------------------------------------------------------------------------------------------------------
@@ -78,7 +95,12 @@ namespace funscrew::HFSO {
       switch (Header.Type) {
       case EMsgType::SyncRequest:
       {
-        uint16_t res = sizeof(uint64_t) + sizeof(uint16_t) + sizeof(uint16_t) + Content.SyncRequest.DataSize;
+        uint16_t res = sizeof(uint64_t) + sizeof(int) + sizeof(uint16_t) + Content.SyncRequest.DataSize;
+        return res;
+      }
+      case EMsgType::SyncReply:
+      {
+        uint16_t res = sizeof(SyncReply);
         return res;
       }
 
@@ -86,6 +108,9 @@ namespace funscrew::HFSO {
         throw std::exception("Unknown / unsupported header type!");
       }
     }
+
+    // ------------------------------------------------------------------------------------------------------------
+    inline bool IsSyncMessage() const { return Header.Type == EMsgType::SyncRequest || Header.Type == EMsgType::SyncReply; }
   };
 
 }

@@ -23,6 +23,7 @@ set(HFSO_SOURCES
     src/CHFSOEndpoint.h
     src/CHFSOEndpoint.cpp
     src/CMsg.h
+    src/EZQ.hpp
 )
 
 

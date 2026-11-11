@@ -87,7 +87,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
   for (size_t i = 0; i < _Options.MaxPlayers; i++)
   {
     auto& p = __AllPlayers[i];
-    if (p.State() != EEndpointState::Available)
+    if (p.State() != EEndpointState::Initializing)
     {
       if (player.PlayerIndex == p.Data()->PlayerIndex) {
         throw std::runtime_error("Player index is already in use!");
@@ -158,14 +158,14 @@ void CHFSOClient::Idle() {
   while (true)
   {
     sockaddr_in from;
-    int received = _Udp->Receive(ReadBuffer, &from);
-    if (received > 0) {
+    int msgSize = _Udp->Receive(ReadBuffer, &from);
+    if (msgSize > 0) {
 
       CMsg* msg = (CMsg*)ReadBuffer;
 
       for (size_t i = 0; i < MAX_MAX_PLAYERS; i++)
       {
-        __AllPlayers[i].OnMessage(msg, from);
+        __AllPlayers[i].OnMessage(msg, msgSize, from);
       }
     }
     else {

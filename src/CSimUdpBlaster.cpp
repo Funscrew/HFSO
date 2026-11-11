@@ -7,14 +7,15 @@ extern drewCo::Logging::CLogMgr Log;
 
 // --------------------------------------------------------------------------------
 CSimMsg::CSimMsg(sockaddr_in& from, sockaddr_in* to, const byte* data, size_t size)
-  :From(from),
-  To(*to)
+  :From(from)
+  , To(*to)
+  , Size(size)
 {
-  Data = (byte*)malloc(size);
+  Data = (byte*)malloc(Size);
   if (!Data) {
     throw std::runtime_error("Could not allocate data for CMsg");
   }
-  memcpy(Data, data, size);
+  memcpy(Data, data, Size);
 }
 
 // --------------------------------------------------------------------------------
@@ -145,8 +146,8 @@ void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t da
   if (deliveryTime != -1) {
     auto msg = new CSimMsg(from, to, data, dataSize);
     msg->ReceiveTime = deliveryTime;
-    msg->Data = data;
-    msg->Size = dataSize;
+    //msg->Data = data;
+    //msg->Size = dataSize;
 
     _Messages.push_back(msg);
   }

@@ -5,13 +5,30 @@
 #include "CEventDriver.h"
 
 #include "CMsg.h"
+#include "EZQ.hpp"
 
 
 namespace funscrew::HFSO
 {
   class CHFSOClient;
-//  class CUdpBlaster;
   class IUdpBlaster;
+
+  // ============================================================================================================
+  struct QueueEntry {
+
+    /// <summary>
+    /// When should the message be sent?  This is really only used when simulating latency / out of order packets.
+    /// </summary>
+    int SendTime;
+    CMsg* Msg;
+
+    QueueEntry() {}
+
+    QueueEntry(int time,  CMsg* msg) 
+      : SendTime(time)
+      , Msg(msg) 
+      { }
+  };
 
   // ============================================================================================================
   struct CPlayer {
@@ -66,7 +83,7 @@ namespace funscrew::HFSO
   // ============================================================================================================
   enum class EEndpointState
   {
-    Available = 0,
+    Initializing = 0,
     Connecting,
 
     /// <summary>
@@ -94,17 +111,20 @@ namespace funscrew::HFSO
     /// <summary>
     /// Magic number for this client.  Remote client must ACK with this number to prove exchange.
     /// </summary>
-    uint32_t LocalMagic = 0;
+    uint16_t LocalMagic = 0;
 
     /// <summary>
     /// Magic number for the remote client.
+    /// NOTE: We don't assign this until sync is complete.  It is meant for security, but is a pretty weak device.
+    /// Better way would be to have the clients already know what the magic numbers should be (via HTTPS or other encrypted channel)
+    /// This is similar to how we make sure that the player names are known BEFORE connecting so we don't get bad data (some player advertised as 'dave' connecting as 'fuckyu' or something worse!)
     /// </summary>
-    uint32_t RemoteMagic = 0;
+    uint16_t RemoteMagic = 0;
 
     /// <summary>
     /// Last acked sequence number for connections.
     /// </summary>
-    uint32_t LastAck = 0;
+    int LastSyncNumber = -1;
 
     /// <summary>
     /// The next time that we will send a connection packet.
@@ -124,18 +144,19 @@ namespace funscrew::HFSO
   class CHFSOEndpoint {
 
   public:
-        // Events ====
+
+    // Events ====
     CEventDriver<CStateChangedArgs> OnStateChanged;
 
     // Properties =
     inline EEndpointState State() { return _State; }
-    inline CPlayer* Data() { return &_Data; }
+    inline CPlayer* Data() { return &_PlayerData; }
 
 
     // Functions ===
     void Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_);
 
-    void OnMessage(const CMsg* msg, const sockaddr_in& from);
+    void OnMessage(const CMsg* msg, size_t msgSize, const sockaddr_in& from);
 
     void Update();
 
@@ -153,13 +174,13 @@ namespace funscrew::HFSO
 
     // Message Handlers..
 
-    bool OnInvalid(CMsg* msg, int msgSize);
-    bool OnSyncRequest(CMsg* msg, int msgSize);
-    bool OnSyncReply(CMsg* msg, int msgSize);
-    bool OnInput(CMsg* msg, int msgSize);
-    bool OnQualityReport(CMsg* msg, int msgSize);
-    bool OnQualityReply(CMsg* msg, int msgSize);
-    bool OnKeepAlive(CMsg* msg, int msgSize);
+    bool OnInvalid(const CMsg* msg, int msgSize);
+    bool OnSyncRequest(const CMsg* msg, int msgSize);
+    bool OnSyncReply(const CMsg* msg, int msgSize);
+    bool OnInput(const CMsg* msg, int msgSize);
+    bool OnQualityReport(const CMsg* msg, int msgSize);
+    bool OnQualityReply(const CMsg* msg, int msgSize);
+    bool OnKeepAlive(const CMsg* msg, int msgSize);
 
     //// These might be dropped.....
     //bool OnInputAck(CMsg* msg, int msgSize) ;         
@@ -168,15 +189,16 @@ namespace funscrew::HFSO
 
     CNetworkStats Stats;
 
+    EZQ<QueueEntry, 64> SendQueue;
 
   protected:
     CHFSOClient* _Parent = nullptr;
     IUdpBlaster* _UDP = nullptr;
 
-    EEndpointState _State = EEndpointState::Available;
+    EEndpointState _State = EEndpointState::Initializing;
 
     // Don't write to it!
-    CPlayer _Data;
+    CPlayer _PlayerData;
     sockaddr_in _RemoteAddr;
 
     ConnectData _ConnectData = {};
@@ -184,9 +206,16 @@ namespace funscrew::HFSO
     void SendSyncRequest();
     void SendMsg(CMsg* msg);
 
+
+    uint16_t _RecvSequence = 0;
+    uint16_t _SendSequence = 0;
+
+  private:
+    void PumpSendQueue();
+    void ClearSendQueue();
   };
 
 
 
-  
+
 }
