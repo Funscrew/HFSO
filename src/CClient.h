@@ -133,7 +133,10 @@ namespace funscrew::HFSO
     /// Datacount (1B) - [code (1B) - datasize (2B) - data (datasize:B)]...
     /// Multiple data entries can be included in the metadata.
     /// </summary>
-    virtual void GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize, uint16_t maxDataSize);
+    /// <returns>
+    /// Integer value representing the sync number.
+    /// </returns>
+    virtual int GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize, uint16_t maxDataSize);
 
     /// <summary>
     /// Handle sync metadata that was sent from another client.

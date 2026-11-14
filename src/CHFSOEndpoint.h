@@ -124,7 +124,7 @@ namespace funscrew::HFSO
     /// <summary>
     /// Last acked sequence number for connections.
     /// </summary>
-    int LastSyncNumber = -1;
+    int AckedSyncNumber = -1;
 
     /// <summary>
     /// The next time that we will send a connection packet.

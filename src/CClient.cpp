@@ -306,18 +306,15 @@ private:
 
 
 // ------------------------------------------------------------------------------------------------
-void funscrew::HFSO::CHFSOClient::GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize, uint16_t maxDataSize)
+int funscrew::HFSO::CHFSOClient::GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize, uint16_t maxDataSize)
 {
   // TOOD: We have to check the sync numbers + acks to decide if we need to send more data or not....
   auto& connData = forEndpoint->ConnectData();
-  if (connData.LastSyncNumber == 0) { 
+  if (connData.AckedSyncNumber == 0) {
     dataSize = 0;
-    return;
+    return 1;
   }
-  
-  // throw std::runtime_error("please finish me!");
 
-  // TODO: We will send the name of this player....
   CSyncMetadataSerializer mw(data, maxDataSize, false);
 
   CHFSOEndpoint& local = GetLocalEndpoint();
@@ -327,6 +324,8 @@ void funscrew::HFSO::CHFSOClient::GetSyncMetadata(CHFSOEndpoint* forEndpoint, ui
   mw.WriteData(NAME_DATA_CODE, (byte*)name.data(), name.size());
 
   dataSize = mw.DataSize();
+
+  return 0;
 }
 
 // ------------------------------------------------------------------------------------------------

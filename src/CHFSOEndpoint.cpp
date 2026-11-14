@@ -36,7 +36,7 @@ namespace funscrew::HFSO {
 
     // Only respond up to a certain point...
     auto& rq = msg->Content.SyncRequest;
-    if (rq.SyncNumber == _ConnectData.LastSyncNumber + 1)
+    if (rq.SyncNumber == _ConnectData.AckedSyncNumber + 1)
     {
       // Acceptable, send the reply!
       CMsg* reply = new CMsg(EMsgType::SyncReply);
@@ -45,16 +45,19 @@ namespace funscrew::HFSO {
       // Now we can decide if we are done with the sync operation....
       // This happens when there is no more metadata to exchange.
       bool metadataOK = _Parent->HandleSyncMetadata(this, msg);
-      rs.Ready = metadataOK ? 1 : 0;
-      rs.SyncNumberAck = metadataOK ? rq.SyncNumber : _ConnectData.LastSyncNumber;
-      SendMsg(reply);
+      rs.Ready = 0;
+      rs.SyncNumberAck = metadataOK ? rq.SyncNumber : _ConnectData.AckedSyncNumber;
 
-      _ConnectData.LastSyncNumber = rs.SyncNumberAck;
+      _ConnectData.AckedSyncNumber = rs.SyncNumberAck;
 
       if (rq.DataSize == 0 && metadataOK) {
         printf("connection is ready!");
         throw std::exception("finish me!");
+        rs.Ready = 1;
       }
+
+      SendMsg(reply);
+
       // New syncrequests go out on reply.
       //else {
       //  // printf("send another sync request here!");
@@ -70,7 +73,20 @@ namespace funscrew::HFSO {
   // -------------------------------------------------------------------------------------------------------------
   bool CHFSOEndpoint::OnSyncReply(const CMsg* msg, int msgSize)
   {
-    throw std::runtime_error("not supported!");
+    auto& rs = msg->Content.SyncReply;
+    _ConnectData.AckedSyncNumber = rs.SyncNumberAck;
+
+    //// If the remote is expecting more sync data, then we will send it!
+    //if (rs.Ready == 0) {
+    //  SendSyncRequest();
+    //}
+    //else { 
+    //  // TODO: LOG: We will no longer send sync requests....
+    //}
+
+    SendSyncRequest();
+    return true;
+    // throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
   bool CHFSOEndpoint::OnInput(const CMsg* msg, int msgSize)
@@ -219,7 +235,7 @@ namespace funscrew::HFSO {
     }
 
     _ConnectData = {};
-    _ConnectData.LastSyncNumber = -1;
+    _ConnectData.AckedSyncNumber = -1;
 
     // TODO: How do we want to care about eventing and callbacks?
     // We can have an assigned single callback, or we can hook up a whole bunch....
@@ -251,7 +267,6 @@ namespace funscrew::HFSO {
 
     auto& rq = msg->Content.SyncRequest;
     rq.SessionId = _Parent->SessionId();
-    rq.SyncNumber = 0;
     rq.PlayerIndex = _PlayerData.PlayerIndex;
 
     // NOTE: Custom / multipart data exchange needs to be thought about / examined.....
@@ -259,7 +274,7 @@ namespace funscrew::HFSO {
     // Probably make some test cases for this up front!
     // Sync number will def need to be a part of it....
     // Maybe the parent isn't really resposible for that either....?
-    _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize, MAX_DATA_SIZE);
+    rq.SyncNumber = _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize, MAX_DATA_SIZE);
 
     SendMsg(msg);
   }

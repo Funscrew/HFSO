@@ -76,6 +76,7 @@ namespace funscrew::HFSO {
         /// Flag to indicate that we are ready and no more sync requests need to be sent!
         /// I don't know if we really need this or not.....
         /// </summary>
+        /// REFACTOR: I don't think this is actually useful.....
         uint8_t Ready;
       } SyncReply;
 
