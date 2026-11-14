@@ -33,6 +33,11 @@ namespace funscrew::HFSO {
   // -------------------------------------------------------------------------------------------------------------
   bool CHFSOEndpoint::OnSyncRequest(const CMsg* msg, int msgSize)
   {
+    if (_State != EEndpointState::Connecting) {
+      // throw std::runtime_error("Invalid state for sending sync requests!");
+      // TODO: LOG:
+      return false;
+    }
 
     // Only respond up to a certain point...
     auto& rq = msg->Content.SyncRequest;
@@ -51,8 +56,6 @@ namespace funscrew::HFSO {
       _ConnectData.AckedSyncNumber = rs.SyncNumberAck;
 
       if (rq.DataSize == 0 && metadataOK) {
-        printf("connection is ready!");
-        throw std::exception("finish me!");
         rs.Ready = 1;
       }
 
@@ -70,12 +73,50 @@ namespace funscrew::HFSO {
     // Log the fact that we didn't receive a sync request with the expected number!
 
   }
+
+  // -------------------------------------------------------------------------------------------------------------
+  void CHFSOEndpoint::SetState(EEndpointState newState)
+  {
+    auto oldState = _State;
+    _State = newState;
+
+
+    switch(newState) { 
+      case EEndpointState::Connected:
+      {
+        auto evt = new CEndpointEvent(EEventType::ClientConnected);
+       evt->Content.Connected.Endpoint = this;
+       _Parent->AddEndpointEvent(evt);
+      }
+      break;
+
+      default:
+      // LOG?
+      break;
+    };
+
+    if (oldState != newState) {
+      CStateChangedArgs args;
+      args.OldState = oldState;
+      args.NewState = _State;
+
+      OnStateChanged.Trigger(this, args);
+    }
+  }
+
   // -------------------------------------------------------------------------------------------------------------
   bool CHFSOEndpoint::OnSyncReply(const CMsg* msg, int msgSize)
   {
     auto& rs = msg->Content.SyncReply;
     _ConnectData.AckedSyncNumber = rs.SyncNumberAck;
 
+    if(rs.Ready) { 
+      SetState(EEndpointState::Connected);
+    }
+    else { 
+      SendSyncRequest();
+    }
+    return true;
     //// If the remote is expecting more sync data, then we will send it!
     //if (rs.Ready == 0) {
     //  SendSyncRequest();
@@ -83,9 +124,13 @@ namespace funscrew::HFSO {
     //else { 
     //  // TODO: LOG: We will no longer send sync requests....
     //}
-
-    SendSyncRequest();
-    return true;
+    //if (_State == EEndpointState::Connecting) { 
+    //  SendSyncRequest();
+    //}
+    //else {
+    //  int x = 10;
+    //}
+    //return true;
     // throw std::runtime_error("not supported!");
   }
   // -------------------------------------------------------------------------------------------------------------
@@ -121,13 +166,6 @@ namespace funscrew::HFSO {
     _State = EEndpointState::Disconnected;
 
     _RemoteAddr = CreateAddr(_PlayerData.Host, _PlayerData.Port);
-
-    //if (_Data.IsLocal
-    //auto a = _UDP->Addr();
-    //if (AreSame(a, _RemoteAddr)) { 
-    //  int x=  10;
-    //}
-    // if (AreSame(_UDP._Addr
   }
 
   // -------------------------------------------------------------------------------------------------------------
@@ -172,10 +210,15 @@ namespace funscrew::HFSO {
     }
     else {
       bool handled = (this->*(msgHandlers[msgType]))(msg, msgSize);
-      if (handled) {
-        Stats.LastReceiveTime = _UDP->Clock()->GetTime();
-        Stats.BytesReceived += msgSize;
-      }
+
+      // NOTE: This kind of logic makes me think more and more that the stats should be in UDPBlaster.
+      Stats.LastReceiveTime = _UDP->Clock()->GetTime();
+      Stats.BytesReceived += msgSize;
+
+      //if (handled) {
+      //  Stats.LastReceiveTime = _UDP->Clock()->GetTime();
+      //  Stats.BytesReceived += msgSize;
+      //}
     }
 
     // printf("I will handle a message!");
@@ -191,16 +234,34 @@ namespace funscrew::HFSO {
     case EEndpointState::Connecting:
       // Continue to exchange sync packets:
       // Once we are synced we can proceed to metadata exchange...
-
+      // TODO: Check for last send time.  If too long, then re-send the sync request.
+      // Give up on connection if the total timeout period is gone.
       break;
-      // case EEndpointState::MetadataExchange:
 
-      // case EEndpointState::Connected:
+    case EEndpointState::Connected:
+    {
+      // We are connected to the other client, so what to do.....
+      int x = 10;
+
+      // TODO: Check time for + resend pending outputs.
+      // TODO: Check time for + send quality report.
+      // TODO: Check time for + Update the network stats.
+      // TODO: Check time for + send keepalive messages (no reply needed)
+      // TODO: Check time for + disconnect if we stopped receiving from the remote.
+      // --> In this case we will start sending out the disconnect notices each update.
+      // If we don't receive them in a timely fashion, then we will force the disconnect.
+      // This is how the normal disconnect logic is going to work...
+    }
+    break;
+
+    // case EEndpointState::MetadataExchange:
+
+    // case EEndpointState::Connected:
 
 
-      //case EEndpointState::Disconnected:
-      //  // DO NOTHING:  We aren't connected!
-      //  break;
+    //case EEndpointState::Disconnected:
+    //  // DO NOTHING:  We aren't connected!
+    //  break;
 
     default:
       throw std::runtime_error("This state is not supported!");
@@ -242,13 +303,8 @@ namespace funscrew::HFSO {
     // Whatever it is, this is certainly one that would be passed up to the parent....
     // So maybe instead of callback we signal the parent directly?
 
-    CStateChangedArgs args;
-    args.OldState = _State;
-    args.NewState = EEndpointState::Connecting;
-
     // TODO: Run this through SetState() so we have a way to always trigger the thunk!
-    _State = EEndpointState::Connecting;
-    OnStateChanged.Trigger(this, args);
+    SetState(EEndpointState::Connecting);
 
     // Log
     // NOTE: I think that the usual update loop will take care of connecting to peers and all that jazz....
@@ -256,15 +312,17 @@ namespace funscrew::HFSO {
 
     // We probably need to send a packet here, and think about metadata exchange type stuff.
     SendSyncRequest();
-
-    // throw std::exception("please complete this code path!");
   }
 
 
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::SendSyncRequest() {
-    CMsg* msg = new CMsg(EMsgType::SyncRequest);
+    // NOTE: There might be one more request to send with the rest of the data....
+    //if (_State != EEndpointState::Connecting) {
+    //  throw std::runtime_error("Invalid state for sending sync requests!");
+    //}
 
+    CMsg* msg = new CMsg(EMsgType::SyncRequest);
     auto& rq = msg->Content.SyncRequest;
     rq.SessionId = _Parent->SessionId();
     rq.PlayerIndex = _PlayerData.PlayerIndex;

@@ -77,6 +77,7 @@ int main(int argc, char* argv[]) {
 
 
   // Let's run some tests here.....
+  Log.Info("Test: CanConnectClients");
   CanConnectClients();
 
   return 0;

@@ -85,11 +85,6 @@ namespace funscrew::HFSO
   {
     Initializing = 0,
     Connecting,
-
-    /// <summary>
-    /// Optional state for exchanging game or other specific data between clients.
-    /// </summary>
-    MetadataExchange,
     Connected,
     Disconnecting,
     Disconnected
@@ -153,6 +148,7 @@ namespace funscrew::HFSO
     inline CPlayer* PlayerData() { return &_PlayerData; }
 
     inline CConnectData& ConnectData() { return _ConnectData; }
+    inline bool IsLocalPlayer() { return _PlayerData.IsLocal; }
 
     // Functions ===
     void Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_);
@@ -206,7 +202,7 @@ namespace funscrew::HFSO
 
     void SendSyncRequest();
     void SendMsg(CMsg* msg);
-
+    void SetState(EEndpointState newState);
 
     uint16_t _RecvSequence = 0;
     uint16_t _SendSequence = 0;

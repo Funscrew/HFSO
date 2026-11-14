@@ -22,7 +22,29 @@ typedef uint16_t milliseconds;
 
 namespace funscrew::HFSO
 {
+  
+  // ============================================================================================================
+  enum class EEventType { 
+    Invalid = 0,
+    ClientConnected,
+    ClientDisconnected,
+  };
 
+  // ============================================================================================================
+  struct CEndpointEvent { 
+    EEventType Type;
+
+    union {
+      struct {
+        CHFSOEndpoint* Endpoint;
+      } Connected;
+      struct {
+        CHFSOEndpoint* Endpoint;
+      } Disconnected;
+    } Content;
+
+    CEndpointEvent(EEventType type_) { Type = type_; }
+  };
 
   // ============================================================================================================
   enum class EClientState {
@@ -84,6 +106,8 @@ namespace funscrew::HFSO
   // HFPOClient is responsible for managing local and remote connections to other players and services.
   class CHFSOClient
   {
+    friend class CHFSOEndpoint;
+
   public:
 
     CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSeed = -1);
@@ -150,6 +174,7 @@ namespace funscrew::HFSO
     /// </summary>
     CHFSOEndpoint& GetLocalEndpoint();
 
+
   protected:
     byte ReadBuffer[MAX_PACKET_SIZE];
     byte InputBuffer[MAX_INPUT_DATA_SIZE];
@@ -175,18 +200,13 @@ namespace funscrew::HFSO
     void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
     void SetState(EClientState newState);
 
+    void CHFSOClient::HandleEvents();
+    // Can this be at friend scope?
+    void AddEndpointEvent(CEndpointEvent* event);
+
   private:
 
-
-    // uint8_t MaxPlayers = 0;
-
-    // bool IsInitialized = false;
-    // void CheckInit();
-
-    // Stuff we need...
-    // Local Player(s).
-    // Remote Player(s).
-    // Services?  ReplayClient, Spectator, etc.?
+    EZQ<CEndpointEvent*, 32> __EndpointEvents;
 
   };
 

@@ -41,16 +41,9 @@ namespace HFSO::Tests
     EClientState s1 = c1->State();
     AssertEqual(s1, EClientState::Active);
 
-    //if (s1 != EClientState::Active) {
-    //  throw std::exception("Client one state should be active!");
-    //}
-
     auto c2 = context.Client2;
-
-
-
-    int x = 10;
-
+    EClientState s2 = c2->State();
+    AssertEqual(s2, EClientState::Active);
   }
 
   // ----------------------------------------------------------------------------------------------------------------

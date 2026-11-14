@@ -46,27 +46,15 @@ CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSee
 CHFSOClient::~CHFSOClient() {}
 
 
-//// ------------------------------------------------------------------------------------------------
-//void CHFSOClient::Init(IUdpBlaster* udp_)
-//{
-//  if (IsInitialized) { throw std::runtime_error("Client has already been initialized!"); }
-//
-//  _Udp = udp_;
-//  IsInitialized = true;
-//}
-
-//// ------------------------------------------------------------------------------------------------
-//void CHFSOClient::CheckInit() {
-//  if (!IsInitialized) {
-//    throw std::runtime_error("Client is not initialized!");
-//  }
-//}
-
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::OnEndpointStateChange(void* sender, CStateChangedArgs& args) {
   printf("Yo!  I am a handler for an event!\n");
 }
-
+//
+//// ------------------------------------------------------------------------------------------------
+//CEndpointEvent::CEndpointEvent(EEventType type_) {
+//  Type = type_;
+//}
 
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::AddPlayer(CPlayer& player)
@@ -105,12 +93,11 @@ void CHFSOClient::AddPlayer(CPlayer& player)
   auto& endpoint = __AllPlayers[availableIndex];
   endpoint.Init(player, this, this->_Udp);
 
-  // Hook the event handlers....
-  // NOTE: We want to keep that thunk instance somewhere....
-  using thunk = CThunk<CHFSOClient, void, void*, CStateChangedArgs&>;
-  auto fn = thunk::Bind(this, &CHFSOClient::OnEndpointStateChange);
-  endpoint.OnStateChanged.Add(fn);
-
+  //// Hook the event handlers....
+  //// NOTE: We want to keep that thunk instance somewhere....
+  //using thunk = CThunk<CHFSOClient, void, void*, CStateChangedArgs&>;
+  //auto fn = thunk::Bind(this, &CHFSOClient::OnEndpointStateChange);
+  //endpoint.OnStateChanged.Add(fn);
   ++PlayerCount;
 
   //// I'm thinking that the best way is to do 'BeginConnect' when we are adding the remote player?
@@ -124,7 +111,11 @@ void CHFSOClient::AddPlayer(CPlayer& player)
 
 }
 
-
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::AddEndpointEvent(CEndpointEvent* event)
+{
+  __EndpointEvents.Push(event);
+}
 
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::Start()
@@ -179,12 +170,42 @@ void CHFSOClient::Idle() {
     __AllPlayers[i].Update();
   }
 
-
   // Handle protocol level events.
+  HandleEvents();
+
   // Log.Info
   // TODO: Get the logging into place....
   // Send data out!
   // Receive data from network + process messages.
+}
+
+// ------------------------------------------------------------------------------------------------
+void CHFSOClient::HandleEvents() {
+
+  while (__EndpointEvents.Count()) {
+
+    auto evt = __EndpointEvents.First();
+
+    switch (evt->Type) {
+
+    case EEventType::ClientConnected:
+    {
+      // NOTE: For now, we only really support a single endpoint, so we can call this good.
+      if (!evt->Content.Connected.Endpoint->IsLocalPlayer()) { 
+        // We can now transition the client to the active state!
+        SetState(EClientState::Active);
+      }
+    }
+    break;
+
+    default:
+      throw std::runtime_error("Unsupported client event type!");
+    }
+
+    delete evt;
+    __EndpointEvents.Pop();
+  }
+
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -340,7 +361,7 @@ bool funscrew::HFSO::CHFSOClient::HandleSyncMetadata(CHFSOEndpoint* forEndpoint,
 
   CSyncMetadataSerializer ms((byte*)rq.SyncData, rq.DataSize, true);
 
-  if (ms.EntryCount() != 1) { 
+  if (ms.EntryCount() != 1) {
     throw std::exception("There should only be one metadata entry count!");
   }
 
