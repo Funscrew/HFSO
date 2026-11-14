@@ -129,8 +129,23 @@ namespace funscrew::HFSO
     /// <summary>
     /// Get the data that is needed for sync.  This is application defined.
     /// By default, player names are exchanged.
+    /// Format for the data is:
+    /// Datacount (1B) - [code (1B) - datasize (2B) - data (datasize:B)]...
+    /// Multiple data entries can be included in the metadata.
     /// </summary>
-    virtual void GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize);
+    virtual void GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize, uint16_t maxDataSize);
+
+    /// <summary>
+    /// Handle sync metadata that was sent from another client.
+    /// By default, we will confirm that the player name is what we expect.
+    /// </summary>
+    virtual bool HandleSyncMetadata(CHFSOEndpoint* forEndpoint, const CMsg* syncMsg);
+
+    /// <summary>
+    /// Returns the local player endpoint.
+    /// Throws an exception if it doesn't yet exist.
+    /// </summary>
+    CHFSOEndpoint& GetLocalEndpoint();
 
   protected:
     byte ReadBuffer[MAX_PACKET_SIZE];

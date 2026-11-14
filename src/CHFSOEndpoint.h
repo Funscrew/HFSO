@@ -107,7 +107,7 @@ namespace funscrew::HFSO
   /// <summary>
   /// Keeps track of the current connection attempt / sync.
   /// </summary>
-  struct ConnectData {
+  struct CConnectData {
     /// <summary>
     /// Magic number for this client.  Remote client must ACK with this number to prove exchange.
     /// </summary>
@@ -150,8 +150,9 @@ namespace funscrew::HFSO
 
     // Properties =
     inline EEndpointState State() { return _State; }
-    inline CPlayer* Data() { return &_PlayerData; }
+    inline CPlayer* PlayerData() { return &_PlayerData; }
 
+    inline CConnectData& ConnectData() { return _ConnectData; }
 
     // Functions ===
     void Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_);
@@ -201,7 +202,7 @@ namespace funscrew::HFSO
     CPlayer _PlayerData;
     sockaddr_in _RemoteAddr;
 
-    ConnectData _ConnectData = {};
+    CConnectData _ConnectData = {};
 
     void SendSyncRequest();
     void SendMsg(CMsg* msg);

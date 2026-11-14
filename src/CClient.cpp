@@ -28,14 +28,14 @@ CHFSOClient::CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSee
 
   memset(InputBuffer, 0, MAX_INPUT_DATA_SIZE);
   InputDataSize = _Options.MaxPlayers * _Options.InputDataSize;
-  if (InputDataSize > MAX_INPUT_DATA_SIZE) { 
+  if (InputDataSize > MAX_INPUT_DATA_SIZE) {
     throw std::runtime_error("Input data size exceeds memory size!");
   }
 
   if (rngSeed != -1) {
     _RNG.seed(rngSeed);
   }
-  else { 
+  else {
     std::random_device rd;
     _RNG.seed(rd());
   }
@@ -89,7 +89,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
     auto& p = __AllPlayers[i];
     if (p.State() != EEndpointState::Initializing)
     {
-      if (player.PlayerIndex == p.Data()->PlayerIndex) {
+      if (player.PlayerIndex == p.PlayerData()->PlayerIndex) {
         throw std::runtime_error("Player index is already in use!");
       }
     }
@@ -188,7 +188,7 @@ void CHFSOClient::Idle() {
 }
 
 // ------------------------------------------------------------------------------------------------
-bool CHFSOClient::SyncInput() { 
+bool CHFSOClient::SyncInput() {
 
   // TODO: Actually implement this...
   return true;
@@ -220,19 +220,175 @@ uint32_t CHFSOClient::RandInt() {
   return res;
 }
 
-// ------------------------------------------------------------------------------------------------
-void funscrew::HFSO::CHFSOClient::GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize)
-{
-  // TODO: We will send the name of this player....
+// =========================================================================================================
+struct CSyncMetadataSerializer {
 
-  dataSize = 0;
+public:
+
+  // ------------------------------------------------------------------------------------------------
+  CSyncMetadataSerializer(byte* buffer_, size_t maxSize_, bool forRead)
+    : Buffer(buffer_)
+    , MaxSize(maxSize_)
+    , ReadWritePos(0)
+    , _EntryCount(0)
+    , DataIndex(0)
+  {
+    if (forRead) {
+      _EntryCount = (uint8_t)Buffer[0];
+    }
+    ReadWritePos = 1;
+  }
+
+
+  // ------------------------------------------------------------------------------------------------
+  // TODO: Enum for data code?  probably?
+  void WriteData(byte dataCode, byte* data, uint16_t dataSize)
+  {
+    size_t end = ReadWritePos + sizeof(byte) + sizeof(uint16_t) + dataSize;
+    if (_EntryCount == 0xFF) {
+      throw std::runtime_error("too many data entries!");
+    }
+    if (end > MaxSize) {
+      throw std::runtime_error("too much data!");
+    }
+
+    Buffer[ReadWritePos] = dataCode;
+    ReadWritePos += sizeof(uint8_t);
+
+    // NOTE: This isn't writing two bytes....
+    // maybe use EZWriter?
+    Buffer[ReadWritePos] = dataSize >> 8;
+    Buffer[ReadWritePos + 1] = dataSize;
+    ReadWritePos += sizeof(uint16_t);
+
+    memcpy(Buffer + ReadWritePos, data, dataSize);
+    ReadWritePos += dataSize;
+
+    ++_EntryCount;
+    Buffer[0] = (byte)_EntryCount;
+  }
+
+  // ------------------------------------------------------------------------------------------------
+  inline size_t DataSize() {
+    if (_EntryCount == 0) { return 0; }
+    return ReadWritePos;
+  }
+
+  // ------------------------------------------------------------------------------------------------
+  // Read the next bit of metadata.
+  // Interpretation application defined.
+  bool ReadNext(uint8_t& code, uint16_t& size, byte*& data) {
+    if (DataIndex == _EntryCount) { return false; }
+
+    code = Buffer[ReadWritePos];
+    size = (Buffer[ReadWritePos + 1] << 8) | Buffer[ReadWritePos + 2];
+    data = Buffer + (ReadWritePos + 3);
+
+    ReadWritePos += 3 + size;
+
+    ++DataIndex;
+    return true;
+  }
+
+  inline uint8_t EntryCount() { return _EntryCount; }
+
+private:
+  byte* Buffer;
+  size_t MaxSize;
+  size_t ReadWritePos;
+
+  // Total number of entries....
+  uint8_t _EntryCount;
+
+  // What data item are we currently reading?
+  size_t DataIndex;
+};
+
+
+// ------------------------------------------------------------------------------------------------
+void funscrew::HFSO::CHFSOClient::GetSyncMetadata(CHFSOEndpoint* forEndpoint, uint8_t* data, uint16_t& dataSize, uint16_t maxDataSize)
+{
+  // TOOD: We have to check the sync numbers + acks to decide if we need to send more data or not....
+  auto& connData = forEndpoint->ConnectData();
+  if (connData.LastSyncNumber == 0) { 
+    dataSize = 0;
+    return;
+  }
+  
+  // throw std::runtime_error("please finish me!");
+
+  // TODO: We will send the name of this player....
+  CSyncMetadataSerializer mw(data, maxDataSize, false);
+
+  CHFSOEndpoint& local = GetLocalEndpoint();
+  auto& name = local.PlayerData()->Name;
+
+  constexpr byte NAME_DATA_CODE = 1;
+  mw.WriteData(NAME_DATA_CODE, (byte*)name.data(), name.size());
+
+  dataSize = mw.DataSize();
 }
 
+// ------------------------------------------------------------------------------------------------
+// Handling of metadata is application defined.  For the reference implementation, we pull out
+// the other player's name and make sure that it matches what we expect.
+// Your implementation could do all kinds of things; exchange map data, all player positions, whatever you like...
+// NOTE: Metadata exchange can happen over many sync request/reply cycles.  It does not have to all fit into one message!
+bool funscrew::HFSO::CHFSOClient::HandleSyncMetadata(CHFSOEndpoint* forEndpoint, const CMsg* syncMsg)
+{
+  auto& rq = syncMsg->Content.SyncRequest;
+  if (rq.DataSize == 0) { return true; }
+
+  CSyncMetadataSerializer ms((byte*)rq.SyncData, rq.DataSize, true);
+
+  if (ms.EntryCount() != 1) { 
+    throw std::exception("There should only be one metadata entry count!");
+  }
+
+  uint8_t code;
+  uint16_t size;
+  byte* data;
+
+  if (ms.ReadNext(code, size, data))
+  {
+    if (code != 1) {
+      throw std::runtime_error("Expected player name data!");
+    }
+    std::string checkName;
+    checkName.append((const char*)data, size);
+
+    auto& epName = forEndpoint->PlayerData()->Name;
+    int comp = epName.compare(checkName.data());
+    if (comp) {
+      // Not the same!
+      throw std::runtime_error("endpoint player name does not match metadata name!");
+    }
+
+    return true;
+  }
+  else {
+    throw std::runtime_error("There is no data when we expected some!");
+  }
+
+  return false;
+}
+
+// ------------------------------------------------------------------------------------------------
+CHFSOEndpoint& funscrew::HFSO::CHFSOClient::GetLocalEndpoint() {
+  for (int i = 0; i < PlayerCount; i++) {
+    auto& ap = __AllPlayers[i];
+    if (ap.PlayerData()->IsLocal) {
+      return ap;
+    }
+  }
+  throw std::runtime_error("No local player has been registered!");
+}
 
 // ------------------------------------------------------------------------------------------------
 CSimHFSOClient::CSimHFSOClient(CClientOptions& ops_, IUdpBlaster* udp_, int rngSeed)
   : CHFSOClient(ops_, udp_, rngSeed)
-{ }
+{
+}
 
 
 

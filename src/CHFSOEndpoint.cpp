@@ -42,26 +42,24 @@ namespace funscrew::HFSO {
       CMsg* reply = new CMsg(EMsgType::SyncReply);
       auto& rs = reply->Content.SyncReply;
 
-
-
       // Now we can decide if we are done with the sync operation....
       // This happens when there is no more metadata to exchange.
-      printf("handle metadata exchange!");
-      const bool METADATA_OK = true;
-
-      rs.Ready = 1;
-
+      bool metadataOK = _Parent->HandleSyncMetadata(this, msg);
+      rs.Ready = metadataOK ? 1 : 0;
+      rs.SyncNumberAck = metadataOK ? rq.SyncNumber : _ConnectData.LastSyncNumber;
       SendMsg(reply);
-      _ConnectData.LastSyncNumber = rq.SyncNumber;
 
-      if (rq.DataSize == 0 && METADATA_OK) {
+      _ConnectData.LastSyncNumber = rs.SyncNumberAck;
+
+      if (rq.DataSize == 0 && metadataOK) {
         printf("connection is ready!");
         throw std::exception("finish me!");
       }
-      else {
-        // printf("send another sync request here!");
-        SendSyncRequest();
-      }
+      // New syncrequests go out on reply.
+      //else {
+      //  // printf("send another sync request here!");
+      //  SendSyncRequest();
+      //}
 
     }
 
@@ -254,13 +252,14 @@ namespace funscrew::HFSO {
     auto& rq = msg->Content.SyncRequest;
     rq.SessionId = _Parent->SessionId();
     rq.SyncNumber = 0;
+    rq.PlayerIndex = _PlayerData.PlayerIndex;
 
     // NOTE: Custom / multipart data exchange needs to be thought about / examined.....
     // This has a lot to do with sequence numbers too.
     // Probably make some test cases for this up front!
     // Sync number will def need to be a part of it....
     // Maybe the parent isn't really resposible for that either....?
-    _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize);
+    _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize, MAX_DATA_SIZE);
 
     SendMsg(msg);
   }
@@ -269,15 +268,15 @@ namespace funscrew::HFSO {
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::SendMsg(CMsg* msg) {
 
+    QueueEntry e;
+    e.Msg = msg;
+    e.SendTime = 0;
+
     // TEMP:  Fill in real logic later!
     // TODO: We will use a proper session ID!
     msg->Header.Magic = 0;
     msg->Header.Sequence = _SendSequence;
     _SendSequence++;
-
-    QueueEntry e;
-    e.Msg = msg;
-    e.SendTime = 0;
 
     SendQueue.Push(e);
 
@@ -318,6 +317,7 @@ namespace funscrew::HFSO {
 
           // TODO: Check out other stats that we might like to track.
       CMsg* msg = entry.Msg;
+
 
       auto size = msg->PacketSize();
 

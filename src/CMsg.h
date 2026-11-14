@@ -4,10 +4,11 @@
 
 #pragma pack(push, 1)
 
+constexpr uint32_t NON_RELIABLE = 0;
+constexpr uint16_t MAX_DATA_SIZE = 4000;
+
 namespace funscrew::HFSO {
 
-  constexpr uint32_t NON_RELIABLE = 0;
-  constexpr uint16_t MAX_DATA_SIZE = 4000;
 
   // ====================================================================================================================
   enum EMsgType {
@@ -52,6 +53,10 @@ namespace funscrew::HFSO {
         /// </summary>
         int SyncNumber;
 
+        /// <summary>
+        /// The index of the player that is making the request.  Used for parity!
+        /// </summary>
+        uint8_t PlayerIndex;
 
         uint16_t DataSize;
         // Byte array of metadata that you might want to exchange.
@@ -95,7 +100,7 @@ namespace funscrew::HFSO {
       switch (Header.Type) {
       case EMsgType::SyncRequest:
       {
-        uint16_t res = sizeof(uint64_t) + sizeof(int) + sizeof(uint16_t) + Content.SyncRequest.DataSize;
+        uint16_t res = sizeof(uint64_t) + sizeof(int) + sizeof(uint8_t) + sizeof(uint16_t) + Content.SyncRequest.DataSize;
         return res;
       }
       case EMsgType::SyncReply:
