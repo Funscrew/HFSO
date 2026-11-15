@@ -48,7 +48,7 @@ public:
 
 int RunClient(ICommand* cmd);
 ICommand* FromToml(const toml::table& from);
-void ParseAddress(const char* addr, char* host, UINT16* port);
+void ParseAddress(const char* addr, char* host, uint16_t* port);
 
 
 
@@ -354,13 +354,13 @@ ICommand* FromToml(const toml::table& from) {
 
 // ----------------------------------------------------------------------------------------------------------------------------------------------
 // Parse the address of the form [host]:port into host (ip) and port.
-void ParseAddress(const char* addr, char* host, UINT16* port)
+void ParseAddress(const char* addr, char* host, uint16_t* port)
 {
   memset(host, 0, MAX_HOST);
 
   int pos = -1;
-  size_t len = strnlen_s(addr, MAX_HOST);
-  for (UINT i = 0; i < len; i++)
+  size_t len = strnlen(addr, MAX_HOST);
+  for (uint32_t i = 0; i < len; i++)
   {
     if (addr[i] == ':') { pos = i; break; }
   }
@@ -374,7 +374,7 @@ void ParseAddress(const char* addr, char* host, UINT16* port)
     char portPart[MAX_HOST];
     strncpy_s(portPart, len - (pos + 1) + 1, addr + pos + 1, MAX_HOST);
 
-    UINT16 usePort = std::atoi(portPart);
+    uint16_t usePort = std::atoi(portPart);
     if (usePort != 0) {
       *port = usePort;
     }

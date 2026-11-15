@@ -95,9 +95,20 @@ namespace funscrew::HFSO
 
     /// <summary>
     /// After connection, how long do we wait before disconnecting an idle connection?
-    /// This applies to all connections, players, appliances, etc.
+    /// Idle connections happen when we don't receive data for a certain amount of time.
     /// </summary>
     milliseconds IdleTimeout = 2000;
+
+    /// <summary>
+    /// How often do we resend packets if we haven't heard anything in a while.
+    /// NOTE: This is specific to sending game inputs.  We resend the ones that we have queued over and over again....
+    /// We will probably end up relocating this to somewhere else....
+    /// </summary>
+    milliseconds ResendInterval = 200;
+
+
+    milliseconds QualityReportInterval = 1000;
+    milliseconds KeepaliveInterval = 500;
 
     uint64_t SessionId = 0;
   };
@@ -121,7 +132,7 @@ namespace funscrew::HFSO
     inline int PlayerCount() const { return _PlayerCount; }
     const CHFSOEndpoint* GetPlayer(uint8_t playerIndex) const;
     
-    byte* GetInputBuffer(size_t& maxInputDataSize);
+    uint8_t* GetInputBuffer(size_t& maxInputDataSize);
 
     /// <summary>
     /// Returns the local player endpoint.
@@ -179,8 +190,8 @@ namespace funscrew::HFSO
 
 
   protected:
-    byte ReadBuffer[MAX_PACKET_SIZE];
-    byte InputBuffer[MAX_INPUT_DATA_SIZE];
+    uint8_t ReadBuffer[MAX_PACKET_SIZE];
+    uint8_t InputBuffer[MAX_INPUT_DATA_SIZE];
     size_t InputDataSize;
 
     bool _InRollback = false;
@@ -203,7 +214,7 @@ namespace funscrew::HFSO
     void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
     void SetState(EClientState newState);
 
-    void CHFSOClient::HandleEvents();
+    void HandleEvents();
     // Can this be at friend scope?
     void AddEndpointEvent(CEndpointEvent* event);
 

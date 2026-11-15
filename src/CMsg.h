@@ -111,7 +111,7 @@ namespace funscrew::HFSO {
       }
 
       default:
-        throw std::exception("Unknown / unsupported header type!");
+        throw std::runtime_error("Unknown / unsupported header type!");
       }
     }
 

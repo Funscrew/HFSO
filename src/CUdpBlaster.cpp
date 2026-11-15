@@ -10,39 +10,55 @@ sockaddr_in funscrew::HFSO::CreateAddr(const std::string ip, uint16_t port)
 }
 
 // ------------------------------------------------------------------------------------------------------------------------
-sockaddr_in funscrew::HFSO::CreateAddr(const char* ip, uint16_t port)
+sockaddr_in funscrew::HFSO::CreateAddr(const char *ip, uint16_t port)
 {
   sockaddr_in res;
   res.sin_family = AF_INET;
   res.sin_port = htons(port);
   inet_pton(AF_INET, ip, &res.sin_addr.s_addr);
 
-  if (!res.sin_addr.s_addr) {
+  if (!res.sin_addr.s_addr)
+  {
     throw std::runtime_error("Invalid peer address!");
   }
 
   return res;
 }
 
-
 // ------------------------------------------------------------------------------------------------
 // NOTE: This should go off with the Platform.h code, probably.....
 SOCKET CreateSocket(uint32_t bind_port, int retries)
 {
   SOCKET s;
-  sockaddr_in sin;
+  sockaddr_in sin{};
   uint16_t port;
   int optval = 1;
 
   s = socket(AF_INET, SOCK_DGRAM, 0);
-  auto o1 = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (const char*)&optval, sizeof optval);
 
-  auto e1 = WSAGetLastError();   //NOTE: This might be 'errno' on linux!
-  if (e1 == 10093) {
-    throw std::runtime_error("Winsock is not initialized!");
+  if (s == INVALID_SOCKET)
+  {
+#ifdef _WIN32
+    if (WSAGetLastError() == WSANOTINITIALISED)
+    {
+      throw std::runtime_error("Winsock is not initialized!");
+    }
+#endif
+    throw std::runtime_error("Failed to create UDP socket!");
   }
 
-  auto o2 = setsockopt(s, SOL_SOCKET, SO_DONTLINGER, (const char*)&optval, sizeof optval);
+  auto o1 = setsockopt(
+      s,
+      SOL_SOCKET,
+      SO_REUSEADDR,
+      reinterpret_cast<const char *>(&optval),
+      sizeof(optval));
+
+  if (o1 == SOCKET_ERROR)
+  {
+    closesocket(s);
+    throw std::runtime_error("Failed to set SO_REUSEADDR!");
+  }
 
   // non-blocking...
   u_long iMode = 1;
@@ -50,11 +66,13 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
 
   sin.sin_family = AF_INET;
   sin.sin_addr.s_addr = htonl(INADDR_ANY);
-  for (port = bind_port; port <= bind_port + retries; port++) {
+  for (port = bind_port; port <= bind_port + retries; port++)
+  {
     sin.sin_port = htons(port);
 
-    auto bindRes = bind(s, (sockaddr*)&sin, sizeof sin);
-    if (bindRes == SOCKET_ERROR) {
+    auto bindRes = bind(s, (sockaddr *)&sin, sizeof sin);
+    if (bindRes == SOCKET_ERROR)
+    {
       // TODO: Some kind of better logging here!
       // printf("err: %d\n", errno);
       // auto e3 = WSAGetLastError();
@@ -62,7 +80,8 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
       throw std::runtime_error("Error creating the socket!");
       // ASSERT(bindRes != SOCKET_ERROR, "Error creating the socket!");
     }
-    else {
+    else
+    {
       // Utils::LogIt(CATEGORY_UDP, "Udp bound to port: %d.", port);
       return s;
     }
@@ -71,10 +90,9 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
   return INVALID_SOCKET;
 }
 
-
 // ------------------------------------------------------------------------------------------------
-IUdpBlaster::IUdpBlaster(IClockSource* clock_)
-  : _Clock(clock_)
+IUdpBlaster::IUdpBlaster(IClockSource *clock_)
+    : _Clock(clock_)
 {
   auto now = _Clock->GetTime();
   Stats.StartTime = now;
@@ -82,7 +100,8 @@ IUdpBlaster::IUdpBlaster(IClockSource* clock_)
 }
 
 // ------------------------------------------------------------------------------------------------
-void IUdpBlaster::UpdateStats() {
+void IUdpBlaster::UpdateStats()
+{
 
   auto now = _Clock->GetTime();
   int updateTime = now - Stats.LastUpdateTime;
@@ -101,16 +120,14 @@ void IUdpBlaster::UpdateStats() {
 }
 
 // ------------------------------------------------------------------------------------------------
-CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource* clock_) :
-  IUdpBlaster(clock_)
-  , _Port(port_)
+CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource *clock_) : IUdpBlaster(clock_), _Port(port_)
 {
   _Socket = CreateSocket(_Port, 3);
   _Addr = CreateAddr("127.0.0.1", _Port);
 }
 
 // ------------------------------------------------------------------------------------------------
-int IUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
+int IUdpBlaster::Send(uint8_t *sendBuffer, size_t size, struct sockaddr *to)
 {
   Stats.PacketsSent++;
   Stats.BytesSent += size;
@@ -124,37 +141,42 @@ int IUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
 }
 
 // ------------------------------------------------------------------------------------------------
-int IUdpBlaster::Receive(byte* buffer, sockaddr_in* from) {
+int IUdpBlaster::Receive(uint8_t *buffer, sockaddr_in *from)
+{
 
   int res = ReceiveImpl(buffer, from);
   return res;
 }
 
-
 // ------------------------------------------------------------------------------------------------
-int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) {
+int CUdpBlaster::ReceiveImpl(uint8_t *receiveBuffer, sockaddr_in *from)
+{
 
   // GGPO style:
-  uint8_t        recv_buf[MAX_PACKET_SIZE];
-  sockaddr_in    recv_addr;
-  int            recv_addr_len;
+  uint8_t recv_buf[MAX_PACKET_SIZE];
+  sockaddr_in recv_addr;
+  socklen_t recv_addr_len;
   int size = 0;
 
   // NOTE: This is all kind of windows specific stuff......
-  for (;;) {
+  for (;;)
+  {
 
     recv_addr_len = sizeof(recv_addr);
-    size = recvfrom(_Socket, (char*)recv_buf, MAX_PACKET_SIZE, 0, (struct sockaddr*)&recv_addr, &recv_addr_len);
+    size = recvfrom(_Socket, (char *)recv_buf, MAX_PACKET_SIZE, 0, (struct sockaddr *)&recv_addr, &recv_addr_len);
 
     // TODO: handle len == 0... indicates a disconnect.
-    if (size == -1) {
+    if (size == -1)
+    {
       int error = WSAGetLastError();
-      if (error != WSAEWOULDBLOCK) {
+      if (error != WSAEWOULDBLOCK)
+      {
         // Utils::LogIt(CATEGORY_UDP, "recvfrom WSAGetLastError returned %d (%x).", error, error);
       }
       break;
     }
-    else if (size > 0) {
+    else if (size > 0)
+    {
       // NOTE: We can probably avoid this copy....
       *from = recv_addr;
 
@@ -169,10 +191,12 @@ int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) {
 }
 
 // ------------------------------------------------------------------------------------------------
-int CUdpBlaster::SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) {
-  int res = sendto(_Socket, reinterpret_cast<const char*>(sendBuffer), size, 0, to, sizeof to);
+int CUdpBlaster::SendImpl(uint8_t *sendBuffer, size_t size, struct sockaddr *to)
+{
+  int res = sendto(_Socket, reinterpret_cast<const char *>(sendBuffer), size, 0, to, sizeof to);
 
-  if (res == SOCKET_ERROR) {
+  if (res == SOCKET_ERROR)
+  {
     DWORD err = WSAGetLastError();
 
     throw std::runtime_error("Unknown error in send!");
@@ -182,29 +206,30 @@ int CUdpBlaster::SendImpl(byte* sendBuffer, size_t size, struct sockaddr* to) {
   }
 
   // Other logging can happen here too....
-  //char dst_ip[1024];
-  //Utils::LogIt(CATEGORY_UDP, "sent %d to %s:%d", len, inet_ntop(AF_INET, (void*)&to->sin_addr, dst_ip, ARRAY_SIZE(dst_ip)), ntohs(to->sin_port), res);
+  // char dst_ip[1024];
+  // Utils::LogIt(CATEGORY_UDP, "sent %d to %s:%d", len, inet_ntop(AF_INET, (void*)&to->sin_addr, dst_ip, ARRAY_SIZE(dst_ip)), ntohs(to->sin_port), res);
 
   return res;
 }
 
 // ------------------------------------------------------------------------------------------------
-CUdpBlaster::~CUdpBlaster() {
-  if (_Socket != INVALIDSOCKET) {
+CUdpBlaster::~CUdpBlaster()
+{
+  if (_Socket != INVALIDSOCKET)
+  {
     // Blow it up here!
     closesocket(_Socket);
   }
   _Socket = INVALIDSOCKET;
 }
 
-
 namespace funscrew::HFSO
 {
   // --------------------------------------------------------------------------------
   // TODO: Share
-  bool AreSame(const sockaddr_in& l, const sockaddr_in& r)
+  bool AreSame(const sockaddr_in &l, const sockaddr_in &r)
   {
-    return l.sin_addr.S_un.S_addr == r.sin_addr.S_un.S_addr &&
-      l.sin_port == r.sin_port;
+    return l.sin_addr.s_addr == r.sin_addr.s_addr &&
+           l.sin_port == r.sin_port;
   }
 }

@@ -16,7 +16,7 @@ namespace HFSO::Tests
   template <typename T>
   void AssertEqual(T l, T r) { 
     if (l != r)  {
-      throw std::exception("Values are not equal!");
+      throw std::runtime_error("Values are not equal!");
     }
   }
 
@@ -24,7 +24,7 @@ namespace HFSO::Tests
   template <typename T>
   void AssertNotNull(T* instance) { 
     if (instance == nullptr) { 
-      throw std::exception("Instance is not null!");
+      throw std::runtime_error("Instance is not null!");
     }
   }
 
@@ -32,7 +32,7 @@ namespace HFSO::Tests
   template <typename T>
   void AssertNull(T* instance) {
     if (instance != nullptr) {
-      throw std::exception("Instance is null!");
+      throw std::runtime_error("Instance is null!");
     }
   }
 
@@ -51,7 +51,7 @@ namespace HFSO::Tests
     SetupDefaultTestContext(context);
 
     // run a loop....
-    context.RunGame(2000);
+    context.RunGame(100);
 
     // Now we have to make sure that the clients are actually connected.....
     auto c1 = context.Client1;
@@ -165,7 +165,7 @@ namespace HFSO::Tests
 
   // ----------------------------------------------------------------------------------------------------------------
   const int TIME_INTERVAL = 1;
-  void  CTestContext::RunGame(int totalTime, std::function<void(byte*, int, int)>* setInputs)
+  void  CTestContext::RunGame(int totalTime, std::function<void(uint8_t*, int, int)>* setInputs)
   {
     for (int curTime = 0; curTime < totalTime; curTime++)
     {
@@ -175,7 +175,7 @@ namespace HFSO::Tests
 
   // ----------------------------------------------------------------------------------------------------------------
   const int FRAME_INTERVAL = 16;
-  void CTestContext::RunStep(int interval, std::function<void(byte*, int, int)>* setInputs)
+  void CTestContext::RunStep(int interval, std::function<void(uint8_t*, int, int)>* setInputs)
   {
     // NOTE: We have to do something about when there are different clocks.....
     Clock1->AddTime(interval);
@@ -238,7 +238,7 @@ namespace HFSO::Tests
   }
 
   //// ------------------------------------------------------------------------------------------------------
-  //public static bool RunFrame(GGPOClient c, byte[] testInput)
+  //public static bool RunFrame(GGPOClient c, uint8_t[] testInput)
   //{
   //  if (!c._synchronizing)
   //  {

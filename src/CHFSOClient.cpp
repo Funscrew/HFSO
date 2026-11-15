@@ -6,6 +6,7 @@
 
 #include "CThunk.h"
 #include "CUdpBlaster.h"
+#include <cstring>
 
 using namespace funscrew::HFSO;
 
@@ -121,6 +122,7 @@ const CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex) const
       return &ep;
     }
   }
+  return nullptr;
 }
 
 
@@ -255,7 +257,7 @@ struct CSyncMetadataSerializer {
 public:
 
   // ------------------------------------------------------------------------------------------------
-  CSyncMetadataSerializer(byte* buffer_, size_t maxSize_, bool forRead)
+  CSyncMetadataSerializer(uint8_t* buffer_, size_t maxSize_, bool forRead)
     : Buffer(buffer_)
     , MaxSize(maxSize_)
     , ReadWritePos(0)
@@ -271,9 +273,9 @@ public:
 
   // ------------------------------------------------------------------------------------------------
   // TODO: Enum for data code?  probably?
-  void WriteData(byte dataCode, byte* data, uint16_t dataSize)
+  void WriteData(uint8_t dataCode, uint8_t* data, uint16_t dataSize)
   {
-    size_t end = ReadWritePos + sizeof(byte) + sizeof(uint16_t) + dataSize;
+    size_t end = ReadWritePos + sizeof(uint8_t) + sizeof(uint16_t) + dataSize;
     if (_EntryCount == 0xFF) {
       throw std::runtime_error("too many data entries!");
     }
@@ -294,7 +296,7 @@ public:
     ReadWritePos += dataSize;
 
     ++_EntryCount;
-    Buffer[0] = (byte)_EntryCount;
+    Buffer[0] = (uint8_t)_EntryCount;
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -306,7 +308,7 @@ public:
   // ------------------------------------------------------------------------------------------------
   // Read the next bit of metadata.
   // Interpretation application defined.
-  bool ReadNext(uint8_t& code, uint16_t& size, byte*& data) {
+  bool ReadNext(uint8_t& code, uint16_t& size, uint8_t*& data) {
     if (DataIndex == _EntryCount) { return false; }
 
     code = Buffer[ReadWritePos];
@@ -322,7 +324,7 @@ public:
   inline uint8_t EntryCount() { return _EntryCount; }
 
 private:
-  byte* Buffer;
+  uint8_t* Buffer;
   size_t MaxSize;
   size_t ReadWritePos;
 
@@ -349,8 +351,8 @@ int funscrew::HFSO::CHFSOClient::GetSyncMetadata(CHFSOEndpoint* forEndpoint, uin
   CHFSOEndpoint& local = GetLocalEndpoint();
   auto& name = local.PlayerData()->Name;
 
-  constexpr byte NAME_DATA_CODE = 1;
-  mw.WriteData(NAME_DATA_CODE, (byte*)name.data(), name.size());
+  constexpr uint8_t NAME_DATA_CODE = 1;
+  mw.WriteData(NAME_DATA_CODE, (uint8_t*)name.data(), name.size());
 
   dataSize = mw.DataSize();
 
@@ -367,15 +369,15 @@ bool funscrew::HFSO::CHFSOClient::HandleSyncMetadata(CHFSOEndpoint* forEndpoint,
   auto& rq = syncMsg->Content.SyncRequest;
   if (rq.DataSize == 0) { return true; }
 
-  CSyncMetadataSerializer ms((byte*)rq.SyncData, rq.DataSize, true);
+  CSyncMetadataSerializer ms((uint8_t*)rq.SyncData, rq.DataSize, true);
 
   if (ms.EntryCount() != 1) {
-    throw std::exception("There should only be one metadata entry count!");
+    throw std::runtime_error("There should only be one metadata entry count!");
   }
 
   uint8_t code;
   uint16_t size;
-  byte* data;
+  uint8_t* data;
 
   if (ms.ReadNext(code, size, data))
   {

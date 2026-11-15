@@ -2353,7 +2353,7 @@ TOML_IMPL_NAMESPACE_START
 		static constexpr uint64_t mantissa = 0b0000000000001111111111111111111111111111111111111111111111111111ull;
 
 		uint64_t val_bits;
-		std::memcpy(&val_bits, &val, sizeof(val));
+		memcpy(&val_bits, &val, sizeof(val));
 		if ((val_bits & exponent) != exponent)
 			return fp_class::ok;
 		if ((val_bits & mantissa))
@@ -12685,7 +12685,7 @@ TOML_ANON_NAMESPACE_START
 			TOML_ASSERT_ASSUME(!eof());
 
 			num = impl::min(position_ + num, source_.length()) - position_;
-			std::memcpy(dest, source_.data() + position_, num);
+			memcpy(dest, source_.data() + position_, num);
 			position_ += num;
 			return num;
 		}
@@ -12863,7 +12863,7 @@ TOML_ANON_NAMESPACE_START
 				{
 					raw_bytes_read = stream_(raw_bytes, block_capacity);
 				}
-				catch (const std::exception& exc)
+				catch (const std::runtime_error& exc)
 				{
 					throw parse_error{ exc.what(), next_pos_, source_path_ };
 				}
@@ -12963,7 +12963,7 @@ TOML_ANON_NAMESPACE_START
 
 						cp.value = decoder_.codepoint;
 						cp.count = currently_decoding_.count;
-						std::memcpy(cp.bytes, currently_decoding_.bytes, currently_decoding_.count);
+						memcpy(cp.bytes, currently_decoding_.bytes, currently_decoding_.count);
 						currently_decoding_.count = {};
 					}
 					else if TOML_UNLIKELY(currently_decoding_.count == 4u)
@@ -13306,7 +13306,7 @@ TOML_ANON_NAMESPACE_START
 		{
 			const auto max_chars = static_cast<size_t>(buf_end - write_pos);
 			const auto len		 = max_chars < arg.length() ? max_chars : arg.length();
-			std::memcpy(write_pos, arg.data(), len);
+			memcpy(write_pos, arg.data(), len);
 			write_pos += len;
 		}
 

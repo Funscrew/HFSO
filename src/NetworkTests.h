@@ -62,15 +62,15 @@ namespace HFSO::Tests
 
     size_t InputDataSize;
     size_t TotalInputDataSize = 0;
-    byte* InputData = nullptr;
+    uint8_t* InputData = nullptr;
 
 
     // --------------------------------------------------------------------------------------------------------------------------
     /// <param name="setInputs">Callback for each frame and player so their inputs for the frame can be set.  Args are: input data, player index, currentTime</param>
-    void RunGame(int totalTime, std::function<void(byte*, int, int)>* setInputs);
+    void RunGame(int totalTime, std::function<void(uint8_t*, int, int)>* setInputs);
     void RunGame(int totalTime) { RunGame(totalTime, nullptr); }
     
-    void RunStep(int interval, std::function<void(byte*, int, int)>* setInputs);
+    void RunStep(int interval, std::function<void(uint8_t*, int, int)>* setInputs);
 
     bool RunFrame(CHFSOClient* client);
   };

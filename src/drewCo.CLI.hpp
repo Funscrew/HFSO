@@ -883,7 +883,7 @@ namespace drewCo::CLI {
                     SetScalar(table, *option, value);
                     result.Values.push_back({ option, value, true });
                 }
-                catch (const std::exception& error) {
+                catch (const std::runtime_error& error) {
                     result.Errors.push_back("Invalid value for option '" + argument + "': " + error.what());
                 }
             }

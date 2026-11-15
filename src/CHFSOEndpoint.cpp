@@ -176,7 +176,7 @@ namespace funscrew::HFSO {
 
     // Make sure that the message is for us.
     auto& _peer_addr = _RemoteAddr;
-    bool isForMe = _peer_addr.sin_addr.S_un.S_addr == from.sin_addr.S_un.S_addr &&
+    bool isForMe = _peer_addr.sin_addr.s_addr == from.sin_addr.s_addr &&
       _peer_addr.sin_port == from.sin_port;
 
     if (!isForMe) { return; }
@@ -245,7 +245,6 @@ namespace funscrew::HFSO {
 
       // TODO: Check time for + resend pending outputs.
       // TODO: Check time for + send quality report.
-      // TODO: Check time for + Update the network stats.
       // TODO: Check time for + send keepalive messages (no reply needed)
       // TODO: Check time for + disconnect if we stopped receiving from the remote.
       // --> In this case we will start sending out the disconnect notices each update.
@@ -392,7 +391,7 @@ namespace funscrew::HFSO {
       CMsg* msg = entry.Msg;
 
       auto size = msg->PacketSize();
-      _UDP->Send((byte*)(msg), size, (struct sockaddr*)&_RemoteAddr);
+      _UDP->Send((uint8_t*)(msg), size, (struct sockaddr*)&_RemoteAddr);
 
       delete entry.Msg;
 

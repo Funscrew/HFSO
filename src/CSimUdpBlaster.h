@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <list>
 
 #include "CUdpBlaster.h"
 
@@ -55,7 +56,7 @@ struct EndpointPairEqual {
 
 struct CSimMsg {
 public:
-    CSimMsg(sockaddr_in& from, sockaddr_in* to, const byte* data, size_t size);
+    CSimMsg(sockaddr_in& from, sockaddr_in* to, const uint8_t* data, size_t size);
     ~CSimMsg();
 
     sockaddr_in From;
@@ -64,7 +65,7 @@ public:
     // When we expect it to arrive.
     uint64_t ReceiveTime;   
 
-    byte* Data = nullptr;
+    uint8_t* Data = nullptr;
     size_t Size = 0;
 };
 
@@ -89,7 +90,7 @@ public:
     CSimNetwork(IClockSource* clock_);
 
     const CSimMsg* GetNext(sockaddr_in& forAddr);
-    void Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t dataSize);
+    void Send(sockaddr_in& from, sockaddr_in* to, uint8_t* data, size_t dataSize);
 
 private:
     IClockSource* _Clock = nullptr;
@@ -117,8 +118,8 @@ public:
 
 protected:
     // Inherited via IUdpBlaster
-    int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) override;
-    int SendImpl(byte* sendBuffer, size_t size, sockaddr* to) override;
+    int ReceiveImpl(uint8_t* receiveBuffer, sockaddr_in* from) override;
+    int SendImpl(uint8_t* sendBuffer, size_t size, sockaddr* to) override;
 
     CSimNetwork* _Network;
 };

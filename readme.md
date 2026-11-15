@@ -14,12 +14,14 @@ Other versions of Windows + Visual Studio may work, but aren't explicitly suppor
 
 Use the following command on windows to generate the project/solution files for VS 2022.
 ```
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake -S . -B build/windows -G "Visual Studio 17 2022" -A x64
 ```
 
 ### Linux
 TBD
-
+```
+cmake -S . -B build/linux
+```
 
 --------------------  
 NOTE:  

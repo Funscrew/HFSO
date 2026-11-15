@@ -2,16 +2,17 @@
 
 #include "drewCo.Logging.hpp"
 #include <climits>
+#include <cstring>
 
 extern drewCo::Logging::CLogMgr Log;
 
 // --------------------------------------------------------------------------------
-CSimMsg::CSimMsg(sockaddr_in& from, sockaddr_in* to, const byte* data, size_t size)
+CSimMsg::CSimMsg(sockaddr_in& from, sockaddr_in* to, const uint8_t* data, size_t size)
   :From(from)
   , To(*to)
   , Size(size)
 {
-  Data = (byte*)malloc(Size);
+  Data = (uint8_t*)malloc(Size);
   if (!Data) {
     throw std::runtime_error("Could not allocate data for CMsg");
   }
@@ -34,7 +35,7 @@ CSimUdpBlaster::CSimUdpBlaster(uint16_t port_, IClockSource* clock_, CSimNetwork
 }
 
 // --------------------------------------------------------------------------------
-int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
+int CSimUdpBlaster::ReceiveImpl(uint8_t* receiveBuffer, sockaddr_in* from)
 {
   const CSimMsg* next = _Network->GetNext(_Addr);
   if (next)
@@ -52,7 +53,7 @@ int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
 }
 
 // --------------------------------------------------------------------------------
-int CSimUdpBlaster::SendImpl(byte* sendBuffer, size_t size, sockaddr* to)
+int CSimUdpBlaster::SendImpl(uint8_t* sendBuffer, size_t size, sockaddr* to)
 {
   _Network->Send(_Addr, reinterpret_cast<sockaddr_in*>(to), sendBuffer, size);
   return size;
@@ -128,7 +129,7 @@ const CSimMsg* CSimNetwork::GetNext(sockaddr_in& forAddr) {
 }
 
 // --------------------------------------------------------------------------------
-void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, byte* data, size_t dataSize)
+void CSimNetwork::Send(sockaddr_in& from, sockaddr_in* to, uint8_t* data, size_t dataSize)
 {
   // TEMP:
   if (AreSame(from, *to)) {
