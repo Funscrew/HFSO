@@ -51,7 +51,7 @@ namespace HFSO::Tests
     SetupDefaultTestContext(context);
 
     // run a loop....
-    context.RunGame(100);
+    context.RunGame(2000);
 
     // Now we have to make sure that the clients are actually connected.....
     auto c1 = context.Client1;

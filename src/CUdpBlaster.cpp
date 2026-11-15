@@ -3,8 +3,6 @@
 
 using namespace funscrew::HFSO;
 
-
-
 // ------------------------------------------------------------------------------------------------------------------------
 sockaddr_in funscrew::HFSO::CreateAddr(const std::string ip, uint16_t port)
 {
@@ -78,20 +76,29 @@ SOCKET CreateSocket(uint32_t bind_port, int retries)
 IUdpBlaster::IUdpBlaster(IClockSource* clock_)
   : _Clock(clock_)
 {
+  auto now = _Clock->GetTime();
+  Stats.StartTime = now;
+  Stats.LastUpdateTime = now;
 }
-
 
 // ------------------------------------------------------------------------------------------------
-int IUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
-{
-  int res = SendImpl(sendBuffer, size, to);
+void IUdpBlaster::UpdateStats() {
 
-  // Get the current time + update stats.
+  auto now = _Clock->GetTime();
+  int updateTime = now - Stats.LastUpdateTime;
+  if (updateTime > UpdateInterval)
+  {
+    int totalMs = now - Stats.StartTime;
+    float totalTime = (std::max)(1.0f, totalMs / 1000.0f);
 
-  return res;
+    // These are aggregate stats over time.
+    // TODO: Use 'LastUpdateTime' to create / extablish a smaller, more recent window for the send/receive stats.
+    Stats.KbpsReceived = (float)(Stats.BytesReceived / 1024.0f) / totalTime;
+    Stats.KbpsSent = (float)(Stats.BytesSent / 1024.0f) / totalTime;
+
+    Stats.LastUpdateTime = now;
+  }
 }
-
-
 
 // ------------------------------------------------------------------------------------------------
 CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource* clock_) :
@@ -103,47 +110,62 @@ CUdpBlaster::CUdpBlaster(uint16_t port_, IClockSource* clock_) :
 }
 
 // ------------------------------------------------------------------------------------------------
-int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) {
-  // throw std::runtime_error("not implemented!");
+int IUdpBlaster::Send(byte* sendBuffer, size_t size, struct sockaddr* to)
+{
+  Stats.PacketsSent++;
+  Stats.BytesSent += size;
+  Stats.LastSendTime = _Clock->GetTime();
 
+  int res = SendImpl(sendBuffer, size, to);
+
+  // Get the current time + update stats.
+
+  return res;
+}
+
+// ------------------------------------------------------------------------------------------------
+int IUdpBlaster::Receive(byte* buffer, sockaddr_in* from) {
+
+  int res = ReceiveImpl(buffer, from);
+  return res;
+}
+
+
+// ------------------------------------------------------------------------------------------------
+int CUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) {
 
   // GGPO style:
-  uint8_t          recv_buf[MAX_PACKET_SIZE];
+  uint8_t        recv_buf[MAX_PACKET_SIZE];
   sockaddr_in    recv_addr;
   int            recv_addr_len;
-  int len = 0;
+  int size = 0;
 
   // NOTE: This is all kind of windows specific stuff......
   for (;;) {
 
     recv_addr_len = sizeof(recv_addr);
-    len = recvfrom(_Socket, (char*)recv_buf, MAX_PACKET_SIZE, 0, (struct sockaddr*)&recv_addr, &recv_addr_len);
+    size = recvfrom(_Socket, (char*)recv_buf, MAX_PACKET_SIZE, 0, (struct sockaddr*)&recv_addr, &recv_addr_len);
 
     // TODO: handle len == 0... indicates a disconnect.
-    if (len == -1) {
+    if (size == -1) {
       int error = WSAGetLastError();
       if (error != WSAEWOULDBLOCK) {
         // Utils::LogIt(CATEGORY_UDP, "recvfrom WSAGetLastError returned %d (%x).", error, error);
       }
       break;
     }
-    else if (len > 0) {
+    else if (size > 0) {
       // NOTE: We can probably avoid this copy....
       *from = recv_addr;
 
-      // NOTE: For our implementation, the client is responsible for interpreting the data...
-
-      // char src_ip[1024];
-      // Utils::LogIt(CATEGORY_UDP, "recvfrom returned (len:%d  from:%s:%d).", len, inet_ntop(AF_INET, (void*)&recv_addr.sin_addr, src_ip, ARRAY_SIZE(src_ip)), ntohs(recv_addr.sin_port));
-      // CMsg* msg = (CMsg*)ReadBuffer;
-
-      // This is where we send off the messages to all endpoints that are listening...
-      //_callbacks->OnMsg(recv_addr, msg, len);
-      //++pollCount;
+      // NOTE: This kind of logic makes me think more and more that the stats should be in UDPBlaster.
+      Stats.PacketsReceived += 1;
+      Stats.BytesReceived += size;
+      Stats.LastReceiveTime = _Clock->GetTime();
     }
   }
 
-  return len;
+  return size;
 }
 
 // ------------------------------------------------------------------------------------------------

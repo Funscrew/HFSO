@@ -4,7 +4,7 @@
 #include <functional>
 
 #include "drewCo.Logging.hpp"
-#include "CClient.h"
+#include "CHFSOClient.h"
 
 class CSimClock;
 class CSimUdpBlaster;
@@ -15,7 +15,10 @@ extern drewCo::Logging::CLogMgr Log;
 
 class CSimNetwork;
 
+
+#ifndef DEL
 #define DEL(x) if(x) { delete(x); x = nullptr; }
+#endif
 
 namespace HFSO::Tests
 {

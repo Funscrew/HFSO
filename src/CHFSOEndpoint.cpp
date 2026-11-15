@@ -1,5 +1,5 @@
 #include "CHFSOEndpoint.h"
-#include "CClient.h"
+#include "CHFSOClient.h"
 #include "CMsg.h"
 
 
@@ -71,7 +71,7 @@ namespace funscrew::HFSO {
 
     // TODO: LOG:
     // Log the fact that we didn't receive a sync request with the expected number!
-
+    return true;
   }
 
   // -------------------------------------------------------------------------------------------------------------
@@ -211,9 +211,9 @@ namespace funscrew::HFSO {
     else {
       bool handled = (this->*(msgHandlers[msgType]))(msg, msgSize);
 
-      // NOTE: This kind of logic makes me think more and more that the stats should be in UDPBlaster.
-      Stats.LastReceiveTime = _UDP->Clock()->GetTime();
-      Stats.BytesReceived += msgSize;
+      //// NOTE: This kind of logic makes me think more and more that the stats should be in UDPBlaster.
+      //Stats.LastReceiveTime = _UDP->Clock()->GetTime();
+      //Stats.BytesReceived += msgSize;
 
       //if (handled) {
       //  Stats.LastReceiveTime = _UDP->Clock()->GetTime();
@@ -391,13 +391,7 @@ namespace funscrew::HFSO {
           // TODO: Check out other stats that we might like to track.
       CMsg* msg = entry.Msg;
 
-
       auto size = msg->PacketSize();
-
-      Stats.packets_sent++;
-      Stats.LastTimeSent = _UDP->Clock()->GetTime();
-      Stats.bytes_sent += size;
-
       _UDP->Send((byte*)(msg), size, (struct sockaddr*)&_RemoteAddr);
 
       delete entry.Msg;

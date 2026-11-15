@@ -123,6 +123,11 @@ namespace funscrew::HFSO
     
     byte* GetInputBuffer(size_t& maxInputDataSize);
 
+    /// <summary>
+    /// Returns the local player endpoint.
+    /// Throws an exception if it doesn't yet exist.
+    /// </summary>
+    CHFSOEndpoint& GetLocalEndpoint();
 
     void AddPlayer(CPlayer& player);
 
@@ -171,11 +176,6 @@ namespace funscrew::HFSO
     /// </summary>
     virtual bool HandleSyncMetadata(CHFSOEndpoint* forEndpoint, const CMsg* syncMsg);
 
-    /// <summary>
-    /// Returns the local player endpoint.
-    /// Throws an exception if it doesn't yet exist.
-    /// </summary>
-    CHFSOEndpoint& GetLocalEndpoint();
 
 
   protected:

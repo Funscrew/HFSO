@@ -9,6 +9,27 @@ namespace funscrew::HFSO
 {
 
   // ============================================================================================================
+  struct CNetworkStats {
+    int     LastSendTime = 0;
+    int     LastReceiveTime = 0;
+
+    int      PacketsSent = 0;
+    int      PacketsReceived = 0;
+
+    int      BytesSent = 0;
+    int      BytesReceived = 0;
+
+    float    KbpsReceived = 0;
+    float    KbpsSent = 0.0f;
+
+    // NEW: how long has client been active for?
+    int       Uptime = 0.0;
+
+    int StartTime = -1;
+    int LastUpdateTime = -1;
+  };
+
+  // ============================================================================================================
   // Represents a UDP connection.
   // Such connections can be real, or simulated.
   class IUdpBlaster {
@@ -27,7 +48,12 @@ namespace funscrew::HFSO
     // TEMP:
     inline sockaddr_in Addr() { return _Addr; }
 
+    void UpdateStats();
+
   protected:
+
+    // OPTIONS:
+    int UpdateInterval = 1000;
 
     // TODO: Move to the endpoint.
     IClockSource* _Clock = nullptr;
@@ -36,6 +62,8 @@ namespace funscrew::HFSO
     /// The address that we are sending data to....  Shouldn't this be 
     /// </summary>
     sockaddr_in _Addr;
+
+    CNetworkStats Stats;
 
     // These need to be the 'internal' versions of send + receive.
     virtual int ReceiveImpl(byte* receiveBuffer, sockaddr_in* from) = 0;

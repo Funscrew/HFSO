@@ -1,4 +1,4 @@
-#include "CClient.h"
+#include "CHFSOClient.h"
 
 #include <stdexcept>
 #include "errno.h"
@@ -186,6 +186,8 @@ void CHFSOClient::Idle() {
   // Handle protocol level events.
   HandleEvents();
 
+  _Udp->UpdateStats();
+
   // Log.Info
   // TODO: Get the logging into place....
   // Send data out!
@@ -232,15 +234,8 @@ bool CHFSOClient::SyncInput() {
 void  const CHFSOClient::IncrementFrame() {
   // TODO: Do the frame increment!
   if (_State != EClientState::Active) { return; }
-
-
 }
 
-// ------------------------------------------------------------------------------------------------
-int IUdpBlaster::Receive(byte* buffer, sockaddr_in* from) {
-  int res = ReceiveImpl(buffer, from);
-  return res;
-}
 
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::End()

@@ -39,6 +39,11 @@ int CSimUdpBlaster::ReceiveImpl(byte* receiveBuffer, sockaddr_in* from)
   const CSimMsg* next = _Network->GetNext(_Addr);
   if (next)
   {
+    // NOTE: This kind of logic makes me think more and more that the stats should be in UDPBlaster.
+    Stats.PacketsReceived += 1;
+    Stats.LastReceiveTime = _Clock->GetTime();
+    Stats.BytesReceived += next->Size;
+
     memcpy(receiveBuffer, next->Data, next->Size);
     *from = next->From;
     return next->Size;

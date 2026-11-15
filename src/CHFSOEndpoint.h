@@ -58,29 +58,6 @@ namespace funscrew::HFSO
 
 
   // ============================================================================================================
-  struct CNetworkStats {
-    int      bytes_sent = 0;
-    int      packets_sent = 0;
-
-    /// <summary>
-    /// The last time that a packet was sent...
-    /// </summary>
-    int     LastTimeSent = 0;
-    int     LastReceiveTime = 0;
-
-    int      BytesReceived = 0;
-    int      PacketsReceived = 0;
-
-    float    KbpsReceived = 0;
-    float    kbps_sent = 0.0f;
-
-    // NEW: how long has client been active for?
-    int       Uptime = 0.0;
-
-    int     NextSequence = 0;
-  };
-
-  // ============================================================================================================
   enum class EEndpointState
   {
     Initializing = 0,
@@ -204,7 +181,6 @@ namespace funscrew::HFSO
     uint16_t _RecvSequence = 0;
     uint16_t _SendSequence = 0;
 
-    CNetworkStats Stats;
     EZQ<QueueEntry, 64> SendQueue;
 
   private:

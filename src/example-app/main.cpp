@@ -1,5 +1,5 @@
 #include "main.h"
-#include "CClient.h"
+#include "CHFSOClient.h"
 
 #include <stdio.h>
 #include "drewCo.Logging.hpp"
@@ -13,9 +13,6 @@
 #include <csignal>
 
 #include "NetworkTests.h"
-
-
-#define DEL(x) { if(x) { delete(x); } }
 
 using namespace funscrew::HFSO;
 using namespace drewCo::Logging;
@@ -32,6 +29,10 @@ const size_t MAX_HOST = 128;
 
 CLogMgr Log;
 
+
+#ifndef DEL
+#define DEL(x) if(x) { delete(x); x = nullptr; }
+#endif
 
 // ========================================================================================================================
 class RunCommand : public ICommand {

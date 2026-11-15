@@ -16,8 +16,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(HFSO_SOURCES
-    src/CClient.h
-    src/CClient.cpp
+    src/CHFSOClient.h
+    src/CHFSOClient.cpp
     src/IClockSource.hpp
     src/Platform.h
     src/CHFSOEndpoint.h
