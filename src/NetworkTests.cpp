@@ -12,10 +12,27 @@ const int RNG_SEED_2 = 67890;
 
 namespace HFSO::Tests
 {
+  // ----------------------------------------------------------------------------------------------------------------
   template <typename T>
   void AssertEqual(T l, T r) { 
     if (l != r)  {
       throw std::exception("Values are not equal!");
+    }
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  template <typename T>
+  void AssertNotNull(T* instance) { 
+    if (instance == nullptr) { 
+      throw std::exception("Instance is not null!");
+    }
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  template <typename T>
+  void AssertNull(T* instance) {
+    if (instance != nullptr) {
+      throw std::exception("Instance is null!");
     }
   }
 
@@ -44,6 +61,27 @@ namespace HFSO::Tests
     auto c2 = context.Client2;
     EClientState s2 = c2->State();
     AssertEqual(s2, EClientState::Active);
+
+
+    // Show that the endpoints in the clients are listed as connected:
+    auto c1Count = c1->PlayerCount();
+    AssertEqual(2, c1Count);
+    for (size_t i = 0; i < c1Count; i++)
+    {
+      auto ep = c1->GetPlayer(i);
+      AssertNotNull(ep);
+      AssertEqual(EEndpointState::Connected,  ep->State());
+    }
+
+
+    auto c2Count = c2->PlayerCount();
+    AssertEqual(2, c2Count);
+    for (size_t i = 0; i < c1Count; i++)
+    {
+      auto ep = c2->GetPlayer(i);
+      AssertNotNull(ep);
+      AssertEqual(EEndpointState::Connected, ep->State());
+    }
   }
 
   // ----------------------------------------------------------------------------------------------------------------

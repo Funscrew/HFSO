@@ -144,8 +144,8 @@ namespace funscrew::HFSO
     CEventDriver<CStateChangedArgs> OnStateChanged;
 
     // Properties =
-    inline EEndpointState State() { return _State; }
-    inline CPlayer* PlayerData() { return &_PlayerData; }
+    inline EEndpointState State() const { return _State; }
+    inline const CPlayer* PlayerData() const { return &_PlayerData; }
 
     inline CConnectData& ConnectData() { return _ConnectData; }
     inline bool IsLocalPlayer() { return _PlayerData.IsLocal; }
@@ -184,9 +184,6 @@ namespace funscrew::HFSO
     //bool OnData(CMsg* msg, int msgSize);					     
 
 
-    CNetworkStats Stats;
-
-    EZQ<QueueEntry, 64> SendQueue;
 
   protected:
     CHFSOClient* _Parent = nullptr;
@@ -206,6 +203,9 @@ namespace funscrew::HFSO
 
     uint16_t _RecvSequence = 0;
     uint16_t _SendSequence = 0;
+
+    CNetworkStats Stats;
+    EZQ<QueueEntry, 64> SendQueue;
 
   private:
     void PumpSendQueue();

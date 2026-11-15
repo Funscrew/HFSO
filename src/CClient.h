@@ -118,6 +118,9 @@ namespace funscrew::HFSO
     inline uint64_t SessionId() const { return _Options.SessionId; }
     inline IUdpBlaster* UDP() const { return _Udp; }
 
+    inline int PlayerCount() const { return _PlayerCount; }
+    const CHFSOEndpoint* GetPlayer(uint8_t playerIndex) const;
+    
     byte* GetInputBuffer(size_t& maxInputDataSize);
 
 
@@ -189,7 +192,7 @@ namespace funscrew::HFSO
 
     EClientState _State = EClientState::Init;
 
-    uint8_t PlayerCount = 0;
+    uint8_t _PlayerCount = 0;
     CHFSOEndpoint __AllPlayers[MAX_MAX_PLAYERS];
 
     std::mt19937 _RNG;
@@ -218,7 +221,7 @@ namespace funscrew::HFSO
   public:
     CSimHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSeed);
 
-    inline uint8_t GetPlayerCount() { return PlayerCount; }
+    inline uint8_t GetPlayerCount() { return _PlayerCount; }
   };
 
 

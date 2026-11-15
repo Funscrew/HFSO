@@ -67,7 +67,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
     throw std::runtime_error("Players can't be added in the current state!");
   }
 
-  if (PlayerCount >= _Options.MaxPlayers) {
+  if (_PlayerCount >= _Options.MaxPlayers) {
     throw std::runtime_error("Max players exceeded!");
   }
 
@@ -98,7 +98,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
   //using thunk = CThunk<CHFSOClient, void, void*, CStateChangedArgs&>;
   //auto fn = thunk::Bind(this, &CHFSOClient::OnEndpointStateChange);
   //endpoint.OnStateChanged.Add(fn);
-  ++PlayerCount;
+  ++_PlayerCount;
 
   //// I'm thinking that the best way is to do 'BeginConnect' when we are adding the remote player?
   //// What about 3+ player games tho?  I don't really want to get too deep in the weeds, but I don't
@@ -110,6 +110,19 @@ void CHFSOClient::AddPlayer(CPlayer& player)
   //}
 
 }
+
+// ------------------------------------------------------------------------------------------------
+const CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex) const 
+{
+  for (size_t i = 0; i < _PlayerCount; i++)
+  {
+    auto& ep = __AllPlayers[i];
+    if (ep.PlayerData()->PlayerIndex == playerIndex) { 
+      return &ep;
+    }
+  }
+}
+
 
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::AddEndpointEvent(CEndpointEvent* event)
@@ -124,7 +137,7 @@ void CHFSOClient::Start()
     throw std::runtime_error("Invalid state!");
   }
 
-  for (size_t i = 0; i < PlayerCount; i++)
+  for (size_t i = 0; i < _PlayerCount; i++)
   {
     __AllPlayers[i].BeginConnect();
   }
@@ -191,7 +204,7 @@ void CHFSOClient::HandleEvents() {
     case EEventType::ClientConnected:
     {
       // NOTE: For now, we only really support a single endpoint, so we can call this good.
-      if (!evt->Content.Connected.Endpoint->IsLocalPlayer()) { 
+      if (!evt->Content.Connected.Endpoint->IsLocalPlayer()) {
         // We can now transition the client to the active state!
         SetState(EClientState::Active);
       }
@@ -395,7 +408,7 @@ bool funscrew::HFSO::CHFSOClient::HandleSyncMetadata(CHFSOEndpoint* forEndpoint,
 
 // ------------------------------------------------------------------------------------------------
 CHFSOEndpoint& funscrew::HFSO::CHFSOClient::GetLocalEndpoint() {
-  for (int i = 0; i < PlayerCount; i++) {
+  for (int i = 0; i < _PlayerCount; i++) {
     auto& ap = __AllPlayers[i];
     if (ap.PlayerData()->IsLocal) {
       return ap;
