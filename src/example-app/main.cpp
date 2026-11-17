@@ -81,6 +81,8 @@ int main(int argc, char* argv[]) {
   Log.Info("Test: CanConnectClients");
   CanConnectClients();
 
+  Log.Info("Tests are OK!");
+
   return 0;
 
 
@@ -164,7 +166,7 @@ void RunGameLoop()
 
 // ------------------------------------------------------------------------------------------------------------------------
 int RunClient(ICommand* cmd) {
-  throw std::exception("this code is stale... not 100% what is going on with it....");
+  throw std::runtime_error("this code is stale... not 100% what is going on with it....");
 
   Log.Info("Running it!");
 
@@ -372,7 +374,8 @@ void ParseAddress(const char* addr, char* host, uint16_t* port)
       memcpy(host, addr, pos);
     }
     char portPart[MAX_HOST];
-    strncpy_s(portPart, len - (pos + 1) + 1, addr + pos + 1, MAX_HOST);
+
+    strncpy(portPart, addr + pos + 1, len - (pos + 1) + 1);
 
     uint16_t usePort = std::atoi(portPart);
     if (usePort != 0) {

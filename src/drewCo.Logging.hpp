@@ -19,9 +19,8 @@ typedef const std::string& CSTRING;
 namespace drewCo::Logging
 {
     namespace Levels {
-        constexpr char* Info = "Info";
+        constexpr const char* Info = "Info";
     }
-    //    static std::hash<std::string> _hasher;
 
     // =======================================================================================
     class ILogger
@@ -60,7 +59,7 @@ namespace drewCo::Logging
             {
                 return;
             }
-            printf(msg.data());
+            printf("%s", msg.data());
 
             // Always include the newline....
             printf("\n");
