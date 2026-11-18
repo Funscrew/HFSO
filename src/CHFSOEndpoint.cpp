@@ -60,13 +60,6 @@ namespace funscrew::HFSO {
       }
 
       SendMsg(reply);
-
-      // New syncrequests go out on reply.
-      //else {
-      //  // printf("send another sync request here!");
-      //  SendSyncRequest();
-      //}
-
     }
 
     // TODO: LOG:
@@ -96,7 +89,7 @@ namespace funscrew::HFSO {
     };
 
     if (oldState != newState) {
-      CStateChangedArgs args;
+      CEndpointStateChangedArgs args;
       args.OldState = oldState;
       args.NewState = _State;
 
@@ -230,12 +223,19 @@ namespace funscrew::HFSO {
     // Local / open endpoints don't need to update.
     if (_PlayerData.IsLocal || _State == EEndpointState::Initializing) { return; }
 
+    auto now = _UDP->Clock()->GetTime();
+
     switch (_State) {
     case EEndpointState::Connecting:
       // Continue to exchange sync packets:
       // Once we are synced we can proceed to metadata exchange...
       // TODO: Check for last send time.  If too long, then re-send the sync request.
       // Give up on connection if the total timeout period is gone.
+      
+      auto elapsed = now = _ConnectData.StartTime;
+      if (elapsed >= _Parent->_Options.ConnectTimeout) { 
+        // TODO: LOG:
+      }
       break;
 
     case EEndpointState::Connected:
@@ -258,9 +258,9 @@ namespace funscrew::HFSO {
     // case EEndpointState::Connected:
 
 
-    //case EEndpointState::Disconnected:
-    //  // DO NOTHING:  We aren't connected!
-    //  break;
+    case EEndpointState::Disconnected:
+      // DO NOTHING:  We aren't connected!
+      break;
 
     default:
       throw std::runtime_error("This state is not supported!");
@@ -296,6 +296,7 @@ namespace funscrew::HFSO {
 
     _ConnectData = {};
     _ConnectData.AckedSyncNumber = -1;
+    _ConnectData.StartTime = _UDP->Clock()->GetTime();
 
     // TODO: How do we want to care about eventing and callbacks?
     // We can have an assigned single callback, or we can hook up a whole bunch....

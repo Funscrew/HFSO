@@ -48,7 +48,7 @@ CHFSOClient::~CHFSOClient() {}
 
 
 // ------------------------------------------------------------------------------------------------
-void CHFSOClient::OnEndpointStateChange(void* sender, CStateChangedArgs& args) {
+void CHFSOClient::OnEndpointStateChange(void* sender, CEndpointStateChangedArgs& args) {
   printf("Yo!  I am a handler for an event!\n");
 }
 //
@@ -113,12 +113,12 @@ void CHFSOClient::AddPlayer(CPlayer& player)
 }
 
 // ------------------------------------------------------------------------------------------------
-const CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex) const 
+const CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex) const
 {
   for (size_t i = 0; i < _PlayerCount; i++)
   {
     auto& ep = __AllPlayers[i];
-    if (ep.PlayerData()->PlayerIndex == playerIndex) { 
+    if (ep.PlayerData()->PlayerIndex == playerIndex) {
       return &ep;
     }
   }
@@ -152,7 +152,15 @@ void CHFSOClient::Start()
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::SetState(EClientState newState)
 {
+  EClientState oldState = _State;
   _State = newState;
+
+  if (oldState != newState) {
+    CClientStateChangedArgs args;
+    args.OldState = oldState;
+    args.NewState = newState;
+    OnStateChanged.Trigger(this, args);
+  }
 }
 
 
@@ -185,8 +193,17 @@ void CHFSOClient::Idle() {
     __AllPlayers[i].Update();
   }
 
+
   // Handle protocol level events.
   HandleEvents();
+
+  //// Other things to do on idle...
+  //switch(_State) { 
+  //  case EClient
+  //default:
+  //// No extra handling required.
+  //break;
+  //}
 
   _Udp->UpdateStats();
 
@@ -212,6 +229,12 @@ void CHFSOClient::HandleEvents() {
         // We can now transition the client to the active state!
         SetState(EClientState::Active);
       }
+    }
+    break;
+
+    case EEventType::ClientDisconnected:
+    {
+      int x = 10;
     }
     break;
 

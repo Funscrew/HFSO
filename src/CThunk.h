@@ -1,4 +1,5 @@
-
+#ifndef CTHUNK_H
+#define CTHUNK_H
 
 // CLANKER:
 // This is an OK way to do a thunk.  Need to dig through moonbounce code as I have a cleaner one in there....
@@ -35,3 +36,5 @@ TObject* CThunk<TObject, TFunction, TArgs...>::Instance = nullptr;
 template<typename TObject, typename TFunction, typename... TArgs>
 typename CThunk<TObject, TFunction, TArgs...>::Method
 CThunk<TObject, TFunction, TArgs...>::Target = nullptr;
+
+#endif // !CTHUNK_H

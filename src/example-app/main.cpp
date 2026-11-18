@@ -78,8 +78,13 @@ int main(int argc, char* argv[]) {
 
 
   // Let's run some tests here.....
+  Log.Info("Test: CanTimeoutOnConnect");
+  CanTimeoutOnConnect();
+
+
   Log.Info("Test: CanConnectClients");
   CanConnectClients();
+
 
   Log.Info("Tests are OK!");
 

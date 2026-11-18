@@ -10,7 +10,7 @@
 #include "IClockSource.hpp"
 #include "CHFSOEndpoint.h"
 #include "CUdpBlaster.h"
-
+#include "CThunk.h"
 
 // NOTE: This should be HUGE.  For example, ideal CPS3 input size for two players will be four bytes.
 constexpr size_t MAX_INPUT_DATA_SIZE = 0xFF;
@@ -20,18 +20,30 @@ constexpr int MAX_MAX_PLAYERS = 2;
 
 typedef uint16_t milliseconds;
 
+
+//using thunk = CThunk<CHFSOClient, void, void*, CStateChangedArgs&>;
+//auto fn = thunk::Bind(this, &CHFSOClient::OnEndpointStateChange);
+//endpoint.OnStateChanged.Add(fn);
+
 namespace funscrew::HFSO
 {
-  
+  constexpr int DEFAULT_CONNECT_TIMEOUT = 5000;
+  constexpr int DEFAULT_IDLE_TIMEOUT = 5000;
+  constexpr int DEFAULT_QUALITY_REPORT_INTERVAL = 1000;
+  constexpr int DEFAULT_KEEPALIVE_INTERVAL = 500;
+
+
+
   // ============================================================================================================
-  enum class EEventType { 
+  enum class EEventType {
     Invalid = 0,
     ClientConnected,
     ClientDisconnected,
   };
 
   // ============================================================================================================
-  struct CEndpointEvent { 
+  // Used in internal event handling.
+  struct CEndpointEvent {
     EEventType Type;
 
     union {
@@ -74,6 +86,13 @@ namespace funscrew::HFSO
     Complete
   };
 
+
+  // ============================================================================================================
+  struct CClientStateChangedArgs {
+    EClientState OldState;
+    EClientState NewState;
+  };
+
   // ============================================================================================================
   struct CClientOptions {
     /// <summary>
@@ -91,13 +110,13 @@ namespace funscrew::HFSO
     /// How long do we wait before we time out the connection?
     /// This applies to all connections, players, appliances, etc.
     /// </summary>
-    milliseconds ConnectTimeout = 5000;
+    milliseconds ConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
 
     /// <summary>
     /// After connection, how long do we wait before disconnecting an idle connection?
     /// Idle connections happen when we don't receive data for a certain amount of time.
     /// </summary>
-    milliseconds IdleTimeout = 2000;
+    milliseconds IdleTimeout = DEFAULT_IDLE_TIMEOUT;
 
     /// <summary>
     /// How often do we resend packets if we haven't heard anything in a while.
@@ -107,8 +126,8 @@ namespace funscrew::HFSO
     milliseconds ResendInterval = 200;
 
 
-    milliseconds QualityReportInterval = 1000;
-    milliseconds KeepaliveInterval = 500;
+    milliseconds QualityReportInterval = DEFAULT_QUALITY_REPORT_INTERVAL;
+    milliseconds KeepaliveInterval = DEFAULT_KEEPALIVE_INTERVAL;
 
     uint64_t SessionId = 0;
   };
@@ -124,6 +143,11 @@ namespace funscrew::HFSO
     CHFSOClient(CClientOptions& options_, IUdpBlaster* udp_, int rngSeed = -1);
     ~CHFSOClient();
 
+    // Events ======
+    // CEventDriver<CClientStateChangedArgs> OnStateChanged;
+
+    CEvent<void*, CClientStateChangedArgs> OnStateChanged; 
+
     bool IsSynchronizing() const { return _IsSynchronizing; }
     inline EClientState State()  const { return _State; }
     inline uint64_t SessionId() const { return _Options.SessionId; }
@@ -131,7 +155,7 @@ namespace funscrew::HFSO
 
     inline int PlayerCount() const { return _PlayerCount; }
     const CHFSOEndpoint* GetPlayer(uint8_t playerIndex) const;
-    
+
     uint8_t* GetInputBuffer(size_t& maxInputDataSize);
 
     /// <summary>
@@ -211,7 +235,7 @@ namespace funscrew::HFSO
     // uint64_t _SessionId = 0;
 
     // Event Handler Functions.
-    void OnEndpointStateChange(void* sender, CStateChangedArgs& args);
+    void OnEndpointStateChange(void* sender, CEndpointStateChangedArgs& args);
     void SetState(EClientState newState);
 
     void HandleEvents();

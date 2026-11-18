@@ -69,7 +69,7 @@ namespace funscrew::HFSO
 
 
   // ============================================================================================================
-  struct CStateChangedArgs {
+  struct CEndpointStateChangedArgs {
     EEndpointState OldState;
     EEndpointState NewState;
   };
@@ -102,6 +102,8 @@ namespace funscrew::HFSO
     /// The next time that we will send a connection packet.
     /// </summary>
     uint32_t NextSendTime = 0;
+
+    int StartTime = 0;
   };
 
   // ============================================================================================================
@@ -118,7 +120,7 @@ namespace funscrew::HFSO
   public:
 
     // Events ====
-    CEventDriver<CStateChangedArgs> OnStateChanged;
+    CEvent<void*, CEndpointStateChangedArgs> OnStateChanged;
 
     // Properties =
     inline EEndpointState State() const { return _State; }

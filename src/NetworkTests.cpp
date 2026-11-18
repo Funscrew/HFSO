@@ -14,16 +14,16 @@ namespace HFSO::Tests
 {
   // ----------------------------------------------------------------------------------------------------------------
   template <typename T>
-  void AssertEqual(T l, T r) { 
-    if (l != r)  {
+  void AssertEqual(T l, T r) {
+    if (l != r) {
       throw std::runtime_error("Values are not equal!");
     }
   }
 
   // ----------------------------------------------------------------------------------------------------------------
   template <typename T>
-  void AssertNotNull(T* instance) { 
-    if (instance == nullptr) { 
+  void AssertNotNull(T* instance) {
+    if (instance == nullptr) {
       throw std::runtime_error("Instance is not null!");
     }
   }
@@ -37,18 +37,89 @@ namespace HFSO::Tests
   }
 
   // ----------------------------------------------------------------------------------------------------------------
+  void AssertTrue(bool value) {
+    if (!value) {
+      throw std::runtime_error("Value is not true!");
+    }
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  void AssertFalse(bool value) {
+    if (value) {
+      throw std::runtime_error("Value is not false!");
+    }
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  void AssertFail(std::string msg) {
+    throw std::runtime_error(msg.data());
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
   // NOTE: This must be run before ALL tests.
   void InitTests() {
     //int initOK = Platform::InitSockets();
     //if (!initOK) { throw std::runtime_error("Could not initialize sockets!"); }
   }
 
+  // ----------------------------------------------------------------------------------------------------------------
+  // This shows that attempting to connect to a remote will fail after a certain amount of time.
+  // The client will send out an event when this happens.
+  void CanTimeoutOnConnect()
+  {
+    CSetupOptions ops;
+    CTestContext context;
+    SetupDefaultTestContext(context, ops);
+
+    const int INIT_TIME = 100;
+
+
+    // We will start client 1, but not client 2.
+    auto c1 = context.Client1;
+
+    c1->Start();
+    context.RunGame(INIT_TIME);
+
+    AssertEqual(EClientState::Starting, c1->State());
+
+    // Lambda style!
+    bool hasActiveState = false;
+    bool hasCompleteState = false;
+    c1->OnStateChanged.Add([&hasActiveState, &hasCompleteState](void* sender, CClientStateChangedArgs& args) {
+      if (args.NewState == EClientState::Complete)
+      {
+        hasCompleteState = true;
+      }
+      else if (args.NewState == EClientState::Active)
+      {
+        hasActiveState = false;
+      }
+      });
+
+    // Run it for the tiemout period.  We should get an event for when this happens.
+    context.RunGame(ops.ClientOptions.ConnectTimeout);
+
+    // We should have never transitioned to an active state, but should not be in a complete state.
+    AssertFalse(hasActiveState);
+    AssertTrue(hasCompleteState);
+
+    // The remote endpoint should be listed as deleted!
+    AssertFail("complete me!");
+
+    // The client is no longer trying to connect or anything.  We are turned off!
+    AssertEqual(EClientState::Complete, c1->State());
+  }
+
+
 
   // ----------------------------------------------------------------------------------------------------------------
   void CanConnectClients() {
 
+    CSetupOptions ops;
     CTestContext context;
-    SetupDefaultTestContext(context);
+    SetupDefaultTestContext(context, ops);
+
+    context.StartAll();
 
     // run a loop....
     context.RunGame(100);
@@ -70,9 +141,8 @@ namespace HFSO::Tests
     {
       auto ep = c1->GetPlayer(i);
       AssertNotNull(ep);
-      AssertEqual(EEndpointState::Connected,  ep->State());
+      AssertEqual(EEndpointState::Connected, ep->State());
     }
-
 
     auto c2Count = c2->PlayerCount();
     AssertEqual(2, c2Count);
@@ -85,7 +155,15 @@ namespace HFSO::Tests
   }
 
   // ----------------------------------------------------------------------------------------------------------------
-  void SetupDefaultTestContext(CTestContext& context)
+  void CTestContext::StartAll() {
+    Client1->Start();
+
+    // NOTE: We could add some kind of start delay here too?  What would we be testing with that setup...?
+    Client2->Start();
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
+  void SetupDefaultTestContext(CTestContext& context, CSetupOptions& ops)
   {
     // Add local + remote player....
     CPlayer local;
@@ -102,10 +180,13 @@ namespace HFSO::Tests
     remote.Host = "127.0.0.1";
     remote.Port = 5001;
 
-    CSetupOptions ops;
-    ops.P1 = local;
-    ops.P2 = remote;
-    ops.InputSize = 5;
+    CSetupOptions useOps;
+    useOps.P1 = local;
+    useOps.P2 = remote;
+    useOps.ClientOptions.MaxPlayers = 2;
+    useOps.ClientOptions.InputDataSize = 5;
+
+    ops = useOps;
 
     SetupTestContext(context, ops);
   }
@@ -113,9 +194,9 @@ namespace HFSO::Tests
   // ----------------------------------------------------------------------------------------------------------------
   void SetupTestContext(CTestContext& context, const CSetupOptions& setupOps)
   {
-    CClientOptions ops;
-    ops.MaxPlayers = setupOps.PlayerCount;
-    ops.InputDataSize = 5;        // This is default input size for FBNEO.
+    CClientOptions ops = setupOps.ClientOptions;
+    //ops.MaxPlayers = setupOps.PlayerCount;
+    //ops.InputDataSize = 5;        // This is default input size for FBNEO.
 
     auto clock = new CSimClock();
     context.Network = new CSimNetwork(clock);
@@ -143,7 +224,6 @@ namespace HFSO::Tests
 
       context.Client1->AddPlayer(local);
       context.Client1->AddPlayer(remote);
-      context.Client1->Start();
     }
 
     {
@@ -155,8 +235,6 @@ namespace HFSO::Tests
       context.Client2->AddPlayer(local);
       context.Client2->AddPlayer(remote);
 
-      // NOTE: We could add some kind of start delay here too?
-      context.Client2->Start();
     }
 
 
@@ -236,25 +314,6 @@ namespace HFSO::Tests
 
     return false;
   }
-
-  //// ------------------------------------------------------------------------------------------------------
-  //public static bool RunFrame(GGPOClient c, uint8_t[] testInput)
-  //{
-  //  if (!c._synchronizing)
-  //  {
-  //    bool syncOK = c.SyncInput(testInput, INPUT_SIZE, GGPOConsts.MAX_PLAYERS);
-
-  //    // Tell the client that we have moved ahead one frame.
-  //    if (syncOK)
-  //    {
-  //      c.IncrementFrame();
-  //    }
-  //    return syncOK;
-  //  }
-  //  return false;
-  //}
-
-
 
   // ----------------------------------------------------------------------------------------------------------------
   CTestContext::~CTestContext() {

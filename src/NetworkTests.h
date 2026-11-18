@@ -28,14 +28,13 @@ namespace HFSO::Tests
     CPlayer P1;        // NOTE: This is the local player for client 1, and remote player for client 2
     CPlayer P2;
 
-    /// <summary>
-    /// Should all clients use the same clock?
-    /// Different clocks are used in test cases where we want to show that we can still sync if one or more clients are lagging behind.
-    /// </summary>
-    bool UseSameClock = true;
+    ///// <summary>
+    ///// Should all clients use the same clock?
+    ///// Different clocks are used in test cases where we want to show that we can still sync if one or more clients are lagging behind.
+    ///// </summary>
+    //bool UseSameClock = true;
 
-    size_t InputSize;
-    uint8_t PlayerCount = 2;
+    CClientOptions ClientOptions;
   };
 
   // ====================================================================================================================================
@@ -73,11 +72,15 @@ namespace HFSO::Tests
     void RunStep(int interval, std::function<void(uint8_t*, int, int)>* setInputs);
 
     bool RunFrame(CHFSOClient* client);
+
+    void StartAll();
   };
 
   void InitTests();
   void SetupTestContext(CTestContext& context, const CSetupOptions& setupOps);
-  void SetupDefaultTestContext(CTestContext& context);
+  void SetupDefaultTestContext(CTestContext& context, CSetupOptions& ops);
 
+  // TEST CASES:
+  void CanTimeoutOnConnect();
   void CanConnectClients();
 }
