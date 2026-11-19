@@ -73,11 +73,15 @@ namespace HFSO::Tests
 
     const int INIT_TIME = 100;
 
-
     // We will start client 1, but not client 2.
     auto c1 = context.Client1;
 
     c1->Start();
+    auto local = c1->GetPlayer(0);
+    auto remote = c1->GetPlayer(1);
+    AssertTrue(local->IsLocalPlayer());
+    AssertTrue(remote->IsRemotePlayer());
+
     context.RunGame(INIT_TIME);
 
     AssertEqual(EClientState::Starting, c1->State());
@@ -103,8 +107,9 @@ namespace HFSO::Tests
     AssertFalse(hasActiveState);
     AssertTrue(hasCompleteState);
 
-    // The remote endpoint should be listed as deleted!
-    AssertFail("complete me!");
+    // The endpoints should be listed as available!
+    AssertEqual(EEndpointState::Available, local->State());
+    AssertEqual(EEndpointState::Available, remote->State());
 
     // The client is no longer trying to connect or anything.  We are turned off!
     AssertEqual(EClientState::Complete, c1->State());

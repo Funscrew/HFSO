@@ -60,7 +60,10 @@ namespace funscrew::HFSO
   // ============================================================================================================
   enum class EEndpointState
   {
-    Initializing = 0,
+    /// <summary>
+    /// This endpoint is ready to be connected (local, remote, etc.)
+    /// </summary>
+    Available = 0,
     Connecting,
     Connected,
     Disconnecting,
@@ -107,6 +110,26 @@ namespace funscrew::HFSO
   };
 
   // ============================================================================================================
+  enum class EDisconnectReason : uint8_t { 
+    Invalid = 0,
+    /// <summary>
+    /// This is a normal disconnect.  We will wait around for an ACK response
+    /// from the remote.
+    /// </summary>
+    Normal,
+    
+    /// <summary>
+    /// Connection attempt timed out.  Disconnect immediately.
+    /// </summary>
+    ConnectTimeout,
+
+    /// <summary>
+    /// Remote stopped responding.  Disconnect immediately.
+    /// </summary>
+    IdleTimeout
+  };
+
+  // ============================================================================================================
   /// <summary>
   /// Represents and endpoint to be used with CHFSO client.  This can be a player, a remote service (ReplayAppliance / LiveSpectate), or anything else that
   /// you may want to plug-in.
@@ -127,7 +150,8 @@ namespace funscrew::HFSO
     inline const CPlayer* PlayerData() const { return &_PlayerData; }
 
     inline CConnectData& ConnectData() { return _ConnectData; }
-    inline bool IsLocalPlayer() { return _PlayerData.IsLocal; }
+    inline bool IsLocalPlayer() const { return _PlayerData.IsLocal; }
+    inline bool IsRemotePlayer() const { return !IsLocalPlayer(); }
 
     // Functions ===
     void Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_);
@@ -146,10 +170,19 @@ namespace funscrew::HFSO
     /// </summary>
     void BeginConnect();
 
+    /// <summary>
+    /// This is called when the connection is completed.
+    /// </summary>
+    void Connected();
+
+    /// <summary>
+    /// Disconnect us from the remote.
+    /// </summary>
+    void Disconnect(EDisconnectReason reason);
+
 
 
     // Message Handlers..
-
     bool OnInvalid(const CMsg* msg, int msgSize);
     bool OnSyncRequest(const CMsg* msg, int msgSize);
     bool OnSyncReply(const CMsg* msg, int msgSize);
@@ -168,7 +201,7 @@ namespace funscrew::HFSO
     CHFSOClient* _Parent = nullptr;
     IUdpBlaster* _UDP = nullptr;
 
-    EEndpointState _State = EEndpointState::Initializing;
+    EEndpointState _State = EEndpointState::Available;
 
     // Don't write to it!
     CPlayer _PlayerData;

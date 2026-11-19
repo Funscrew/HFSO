@@ -76,7 +76,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
   for (size_t i = 0; i < _Options.MaxPlayers; i++)
   {
     auto& p = __AllPlayers[i];
-    if (p.State() != EEndpointState::Initializing)
+    if (p.State() != EEndpointState::Available)
     {
       if (player.PlayerIndex == p.PlayerData()->PlayerIndex) {
         throw std::runtime_error("Player index is already in use!");
@@ -234,7 +234,12 @@ void CHFSOClient::HandleEvents() {
 
     case EEventType::ClientDisconnected:
     {
-      int x = 10;
+      // For now, since we only support one remote, if it gets disconnected, then we can wrap it up.
+      auto ep = evt->Content.Disconnected.Endpoint;
+      if (ep->IsRemotePlayer())
+      {
+        End();
+      }
     }
     break;
 
@@ -265,7 +270,12 @@ void  const CHFSOClient::IncrementFrame() {
 // ------------------------------------------------------------------------------------------------
 void CHFSOClient::End()
 {
-  throw std::runtime_error("finish me!");
+  // Disconnect all endpoints + clear them up.
+  for (size_t i = 0; i < _PlayerCount; i++)
+  {
+    __AllPlayers[i].Complete();
+  }
+  SetState(EClientState::Complete);
 }
 
 // ------------------------------------------------------------------------------------------------

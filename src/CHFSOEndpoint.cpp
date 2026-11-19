@@ -74,17 +74,28 @@ namespace funscrew::HFSO {
     _State = newState;
 
 
-    switch(newState) { 
-      case EEndpointState::Connected:
-      {
-        auto evt = new CEndpointEvent(EEventType::ClientConnected);
-       evt->Content.Connected.Endpoint = this;
-       _Parent->AddEndpointEvent(evt);
-      }
-      break;
+    switch (newState) {
+    case EEndpointState::Connected:
+    {
+      auto evt = new CEndpointEvent(EEventType::ClientConnected);
+      evt->Content.Connected.Endpoint = this;
+      _Parent->AddEndpointEvent(evt);
+    }
+    break;
 
-      default:
+    case EEndpointState::Disconnected:
+    {
+      auto evt = new CEndpointEvent(EEventType::ClientDisconnected);
+      evt->Content.Disconnected.Endpoint = this;
+      _Parent->AddEndpointEvent(evt);
+    }
+    break;
+
+
+    default:
       // LOG?
+      // TEMP:
+      printf("No handler for new state: %d\n", newState);
       break;
     };
 
@@ -103,10 +114,10 @@ namespace funscrew::HFSO {
     auto& rs = msg->Content.SyncReply;
     _ConnectData.AckedSyncNumber = rs.SyncNumberAck;
 
-    if(rs.Ready) { 
+    if (rs.Ready) {
       SetState(EEndpointState::Connected);
     }
-    else { 
+    else {
       SendSyncRequest();
     }
     return true;
@@ -150,7 +161,7 @@ namespace funscrew::HFSO {
 
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_) {
-    if (_State != EEndpointState::Initializing) {
+    if (_State != EEndpointState::Available) {
       throw std::runtime_error("Can't initialize an endpoint that isn't available!");
     }
     _Parent = parent_;
@@ -165,7 +176,7 @@ namespace funscrew::HFSO {
   void CHFSOEndpoint::OnMessage(const CMsg* msg, size_t msgSize, const sockaddr_in& from) {
 
     // Local / open endpoints don't handle messages.
-    if (_PlayerData.IsLocal || _State == EEndpointState::Initializing) { return; }
+    if (_PlayerData.IsLocal || _State == EEndpointState::Available) { return; }
 
     // Make sure that the message is for us.
     auto& _peer_addr = _RemoteAddr;
@@ -221,22 +232,26 @@ namespace funscrew::HFSO {
   // NOTE: OnLoopPoll
   void CHFSOEndpoint::Update() {
     // Local / open endpoints don't need to update.
-    if (_PlayerData.IsLocal || _State == EEndpointState::Initializing) { return; }
+    if (_PlayerData.IsLocal || _State == EEndpointState::Available) { return; }
 
     auto now = _UDP->Clock()->GetTime();
 
     switch (_State) {
     case EEndpointState::Connecting:
+    {
       // Continue to exchange sync packets:
       // Once we are synced we can proceed to metadata exchange...
       // TODO: Check for last send time.  If too long, then re-send the sync request.
       // Give up on connection if the total timeout period is gone.
-      
-      auto elapsed = now = _ConnectData.StartTime;
-      if (elapsed >= _Parent->_Options.ConnectTimeout) { 
+
+      auto elapsed = now - _ConnectData.StartTime;
+      if (elapsed >= _Parent->_Options.ConnectTimeout) {
         // TODO: LOG:
+        // We will disconnect now....
+        Disconnect(EDisconnectReason::ConnectTimeout);
       }
-      break;
+    }
+    break;
 
     case EEndpointState::Connected:
     {
@@ -268,14 +283,37 @@ namespace funscrew::HFSO {
     }
   }
 
+
+  // -------------------------------------------------------------------------------------------------------------
+  void CHFSOEndpoint::Disconnect(EDisconnectReason reason)
+  {
+    // TODO: Log this event....
+
+    switch (reason) {
+
+      // Both of these disconnects are immediate!
+    case EDisconnectReason::IdleTimeout:
+    case EDisconnectReason::ConnectTimeout:
+    {
+      SetState(EEndpointState::Disconnected);
+    }
+    break;
+    default:
+      throw std::runtime_error("The disconnect reason is not supported!");
+    }
+  }
+
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::Complete() {
-    if (_State != EEndpointState::Disconnected) {
+
+    if (IsRemotePlayer() && _State != EEndpointState::Disconnected) {
+      // TODO: This should probably be an assert b/c we don't want to blow up an application because
+      // somebody tried to shut down the client too early!
       throw std::runtime_error("Can't complete an endpoint that isn't disconnected!");
     }
 
     _PlayerData = {};
-    _State = EEndpointState::Initializing;
+    _State = EEndpointState::Available;
     _ConnectData = {};
 
     ClearSendQueue();
