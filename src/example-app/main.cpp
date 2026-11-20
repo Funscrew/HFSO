@@ -76,6 +76,9 @@ int main(int argc, char* argv[]) {
 
   Log.Info("Intializing sockets...");
 
+  Log.Info("Test: CanManuallyDisconnectClient");
+  CanManuallyDisconnectClient();
+
 
   // Let's run some tests here.....
   Log.Info("Test: CanTimeoutOnConnect");

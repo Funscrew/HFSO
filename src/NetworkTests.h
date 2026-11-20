@@ -83,4 +83,5 @@ namespace HFSO::Tests
   // TEST CASES:
   void CanTimeoutOnConnect();
   void CanConnectClients();
+  void CanManuallyDisconnectClient();
 }

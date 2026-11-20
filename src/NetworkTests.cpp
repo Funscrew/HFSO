@@ -63,6 +63,34 @@ namespace HFSO::Tests
   }
 
   // ----------------------------------------------------------------------------------------------------------------
+  // Shows that we can manually disconnect a client, messages are exchanged as expected, and so on. 
+  void CanManuallyDisconnectClient(){
+    CSetupOptions ops;
+    CTestContext context;
+    SetupDefaultTestContext(context, ops);
+
+    context.StartAll();
+    context.RunGame(1000);
+
+    AssertEqual(EClientState::Active,  context.Client1->State());
+    AssertEqual(EClientState::Active, context.Client2->State());
+
+    // Client 1 does a manual disconnect.  Its remote should also disconnect:
+    auto r1 = context.Client1->GetRemote();
+    auto r2 = context.Client2->GetRemote();
+
+    r1->Disconnect(EDisconnectReason::Normal);
+
+    // This should be more than enough time to process messages....
+    context.RunGame(500);
+
+
+    // Here we need some kind of way to see when messages are sent / processed...  Very handy for test code + overall system design....
+    // Like if we wanted to make some other kind of endpoint (not just rollback) then we go ahead and have it have ways to 'plug in' to
+    // the message handling....?
+  }
+
+  // ----------------------------------------------------------------------------------------------------------------
   // This shows that attempting to connect to a remote will fail after a certain amount of time.
   // The client will send out an event when this happens.
   void CanTimeoutOnConnect()

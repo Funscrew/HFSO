@@ -28,6 +28,7 @@ typedef uint16_t milliseconds;
 namespace funscrew::HFSO
 {
   constexpr int DEFAULT_CONNECT_TIMEOUT = 5000;
+  constexpr int DEFAULT_DISCONNECT_TIMEOUT = 2000;
   constexpr int DEFAULT_IDLE_TIMEOUT = 5000;
   constexpr int DEFAULT_QUALITY_REPORT_INTERVAL = 1000;
   constexpr int DEFAULT_KEEPALIVE_INTERVAL = 500;
@@ -113,15 +114,19 @@ namespace funscrew::HFSO
     milliseconds ConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
 
     /// <summary>
+    /// How to wait for a disconnect ACK?
+    /// </summary>
+    milliseconds DisconnectTimeout = DEFAULT_DISCONNECT_TIMEOUT;
+
+    /// <summary>
     /// After connection, how long do we wait before disconnecting an idle connection?
     /// Idle connections happen when we don't receive data for a certain amount of time.
     /// </summary>
     milliseconds IdleTimeout = DEFAULT_IDLE_TIMEOUT;
 
     /// <summary>
-    /// How often do we resend packets if we haven't heard anything in a while.
-    /// NOTE: This is specific to sending game inputs.  We resend the ones that we have queued over and over again....
-    /// We will probably end up relocating this to somewhere else....
+    /// How often do we resend packets if we haven't heard anything in a while?
+    /// This is used for disconnect, sync, or any other type of communication where we expect a prompt reply.
     /// </summary>
     milliseconds ResendInterval = 200;
 
@@ -146,7 +151,7 @@ namespace funscrew::HFSO
     // Events ======
     // CEventDriver<CClientStateChangedArgs> OnStateChanged;
 
-    CEvent<void*, CClientStateChangedArgs> OnStateChanged; 
+    CEvent<void*, CClientStateChangedArgs> OnStateChanged;
 
     bool IsSynchronizing() const { return _IsSynchronizing; }
     inline EClientState State()  const { return _State; }
@@ -154,7 +159,9 @@ namespace funscrew::HFSO
     inline IUdpBlaster* UDP() const { return _Udp; }
 
     inline int PlayerCount() const { return _PlayerCount; }
-    const CHFSOEndpoint* GetPlayer(uint8_t playerIndex) const;
+    CHFSOEndpoint* GetPlayer(uint8_t playerIndex);
+    CHFSOEndpoint* GetRemote();
+    CHFSOEndpoint* GetLocal();
 
     uint8_t* GetInputBuffer(size_t& maxInputDataSize);
 

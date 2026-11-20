@@ -15,6 +15,8 @@ namespace funscrew::HFSO {
     Invalid = 0,
     SyncRequest = 1,
     SyncReply = 2,
+    Disconnect = 3,
+    DisconnectAck = 4,
     //Input = 3,
     //QualityReport = 4,
     //QualityReply = 5,
@@ -79,6 +81,16 @@ namespace funscrew::HFSO {
         /// REFACTOR: I don't think this is actually useful.....
         uint8_t Ready;
       } SyncReply;
+      
+      /// <summary>
+      /// This is used for both Disconnect and DisconnectAck messages.
+      /// </summary>
+      struct {
+        /// <summary>
+        /// The frame number that the disconnect request was sent on / ACKed
+        /// </summary>
+        uint32_t FrameNumber;
+      } Disconnect;
 
     } Content;
 
@@ -109,6 +121,11 @@ namespace funscrew::HFSO {
         uint16_t res = sizeof(SyncReply);
         return res;
       }
+
+      case EMsgType::Disconnect:
+      case EMsgType::DisconnectAck:
+        uint16_t res = sizeof(Disconnect);
+        return res;
 
       default:
         throw std::runtime_error("Unknown / unsupported header type!");

@@ -11,18 +11,21 @@ namespace funscrew::HFSO {
 
   typedef bool (CHFSOEndpoint::* DispatchFn)(const CMsg* msg, int msgSize);
 
-  // NOTE:  A table of function pointers is used so that the values from UdpMsg::MsgType
+  // NOTE:  A table of function pointers is used so that the values from EMsgType
   // can be used to index into this.
   static const DispatchFn msgHandlers[] = {
-     &CHFSOEndpoint::OnInvalid,             /* Invalid */
-     &CHFSOEndpoint::OnSyncRequest,         /* SyncRequest */
-     &CHFSOEndpoint::OnSyncReply,           /* SyncReply */
-     &CHFSOEndpoint::OnInput,               /* Input */
-     &CHFSOEndpoint::OnQualityReport,       /* QualityReport */
-     &CHFSOEndpoint::OnQualityReply,        /* QualityReply */
-     &CHFSOEndpoint::OnKeepAlive,           /* KeepAlive */
-     //&CHFSOEndpoint::OnInputAck,            /* InputAck */
-     //&CHFSOEndpoint::OnData					       /* Data Exchange - A chat message or other type of data was received */
+     &CHFSOEndpoint::OnInvalid,
+     &CHFSOEndpoint::OnSyncRequest,
+     &CHFSOEndpoint::OnSyncReply,
+     &CHFSOEndpoint::OnDisconnect,
+     &CHFSOEndpoint::OnDisconnectAck,
+
+     //&CHFSOEndpoint::OnInput,            
+     //&CHFSOEndpoint::OnQualityReport,    
+     //&CHFSOEndpoint::OnQualityReply,     
+     //&CHFSOEndpoint::OnKeepAlive,        
+     //&CHFSOEndpoint::OnInputAck,         
+     //&CHFSOEndpoint::OnData					     
   };
 
   // -------------------------------------------------------------------------------------------------------------
@@ -83,6 +86,15 @@ namespace funscrew::HFSO {
     }
     break;
 
+    case EEndpointState::Disconnecting:
+    {
+      if (_State != EEndpointState::Connected) {
+        // TODO: Log some kind of warning! --> do we need to do this for other states ?  probably....
+      }
+      _ConnectData.DisconnectStart = _UDP->Clock()->GetTime();
+      SendDisconnectMessage();
+    }
+
     case EEndpointState::Disconnected:
     {
       auto evt = new CEndpointEvent(EEventType::ClientDisconnected);
@@ -95,7 +107,8 @@ namespace funscrew::HFSO {
     default:
       // LOG?
       // TEMP:
-      printf("No handler for new state: %d\n", newState);
+      // Log::Debug
+      // printf("No handler for new state: %d\n", newState);
       break;
     };
 
@@ -137,6 +150,17 @@ namespace funscrew::HFSO {
     //return true;
     // throw std::runtime_error("not supported!");
   }
+
+  // -------------------------------------------------------------------------------------------------------------
+  bool CHFSOEndpoint::OnDisconnect(const CMsg* msg, int msgSize) {
+    throw std::runtime_error("not supported!");
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  bool CHFSOEndpoint::OnDisconnectAck(const CMsg* msg, int msgSize) {
+    throw std::runtime_error("not supported!");
+  }
+
   // -------------------------------------------------------------------------------------------------------------
   bool CHFSOEndpoint::OnInput(const CMsg* msg, int msgSize)
   {
@@ -244,7 +268,7 @@ namespace funscrew::HFSO {
       // TODO: Check for last send time.  If too long, then re-send the sync request.
       // Give up on connection if the total timeout period is gone.
 
-      auto elapsed = now - _ConnectData.StartTime;
+      auto elapsed = now - _ConnectData.ConnectStart;
       if (elapsed >= _Parent->_Options.ConnectTimeout) {
         // TODO: LOG:
         // We will disconnect now....
@@ -258,7 +282,7 @@ namespace funscrew::HFSO {
       // We are connected to the other client, so what to do.....
       int x = 10;
 
-      // TODO: Check time for + resend pending outputs.
+      // TODO: Check time for + resend pending outputs. (that is something that is rollback client specific!)
       // TODO: Check time for + send quality report.
       // TODO: Check time for + send keepalive messages (no reply needed)
       // TODO: Check time for + disconnect if we stopped receiving from the remote.
@@ -268,10 +292,21 @@ namespace funscrew::HFSO {
     }
     break;
 
-    // case EEndpointState::MetadataExchange:
-
-    // case EEndpointState::Connected:
-
+    case EEndpointState::Disconnecting:
+    {
+      auto elapsed = now - _ConnectData.DisconnectStart;
+      if (elapsed >= _Parent->_Options.DisconnectTimeout) {
+        Disconnect(EDisconnectReason::DisconnectTimeout);
+      }
+      else {
+        auto sinceLast = now - _ConnectData.LastDisconnectMsg;
+        if (sinceLast >= _Parent->_Options.ResendInterval)
+        {
+          SendDisconnectMessage();
+        }
+      }
+    }
+    break;
 
     case EEndpointState::Disconnected:
       // DO NOTHING:  We aren't connected!
@@ -283,6 +318,12 @@ namespace funscrew::HFSO {
     }
   }
 
+  // -------------------------------------------------------------------------------------------------------------
+  int CHFSOEndpoint::Now() const {
+    // TODO: Is there a way that we can get this once and then use the same val for the current frame instead
+    // of always calling the timing function over and over?  I think that would be cool!
+    return _UDP->Clock()->GetTime();
+  }
 
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::Disconnect(EDisconnectReason reason)
@@ -291,7 +332,13 @@ namespace funscrew::HFSO {
 
     switch (reason) {
 
-      // Both of these disconnects are immediate!
+    case EDisconnectReason::Normal:
+    {
+      SetState(EEndpointState::Disconnecting);
+    }
+    break;
+
+    // Both of these disconnects are immediate!
     case EDisconnectReason::IdleTimeout:
     case EDisconnectReason::ConnectTimeout:
     {
@@ -334,7 +381,7 @@ namespace funscrew::HFSO {
 
     _ConnectData = {};
     _ConnectData.AckedSyncNumber = -1;
-    _ConnectData.StartTime = _UDP->Clock()->GetTime();
+    _ConnectData.ConnectStart = _UDP->Clock()->GetTime();
 
     // TODO: How do we want to care about eventing and callbacks?
     // We can have an assigned single callback, or we can hook up a whole bunch....
@@ -352,6 +399,26 @@ namespace funscrew::HFSO {
     SendSyncRequest();
   }
 
+
+  // -------------------------------------------------------------------------------------------------------------
+  void CHFSOEndpoint::SendDisconnectMessage() {
+    CMsg* msg = new CMsg(EMsgType::Disconnect);
+
+    // TODO: When we get frame sync stuff in place we can make sure that we use the right one!
+    msg->Content.Disconnect.FrameNumber = 999;
+
+    _ConnectData.LastDisconnectMsg = Now();
+    SendMsg(msg);
+  }
+
+  // -------------------------------------------------------------------------------------------------------------
+  void CHFSOEndpoint::SendDisconnectAck() {
+    CMsg* msg = new CMsg(EMsgType::DisconnectAck);
+
+    // TODO: When we get frame sync stuff in place we can make sure that we use the right one!
+    msg->Content.Disconnect.FrameNumber = 999;
+    SendMsg(msg);
+  }
 
   // -------------------------------------------------------------------------------------------------------------
   void CHFSOEndpoint::SendSyncRequest() {
@@ -373,6 +440,7 @@ namespace funscrew::HFSO {
     rq.SyncNumber = _Parent->GetSyncMetadata(this, rq.SyncData, rq.DataSize, MAX_DATA_SIZE);
 
     SendMsg(msg);
+    _ConnectData.LastConnectMsg = Now();
   }
 
 
@@ -390,8 +458,10 @@ namespace funscrew::HFSO {
     _SendSequence++;
 
     SendQueue.Push(e);
+    _ConnectData.LastMsg = Now();
 
     PumpSendQueue();
+
   }
 
 

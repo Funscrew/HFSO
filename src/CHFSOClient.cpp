@@ -113,7 +113,7 @@ void CHFSOClient::AddPlayer(CPlayer& player)
 }
 
 // ------------------------------------------------------------------------------------------------
-const CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex) const
+CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex)
 {
   for (size_t i = 0; i < _PlayerCount; i++)
   {
@@ -121,6 +121,26 @@ const CHFSOEndpoint* CHFSOClient::GetPlayer(uint8_t playerIndex) const
     if (ep.PlayerData()->PlayerIndex == playerIndex) {
       return &ep;
     }
+  }
+  return nullptr;
+}
+
+// ------------------------------------------------------------------------------------------------
+CHFSOEndpoint* CHFSOClient::GetRemote() {
+  for (size_t i = 0; i < _PlayerCount; i++)
+  {
+    auto& ep = __AllPlayers[i];
+    if (ep.IsRemotePlayer()) { return &ep; }
+  }
+  return nullptr;
+}
+
+// ------------------------------------------------------------------------------------------------
+CHFSOEndpoint* CHFSOClient::GetLocal() {
+  for (size_t i = 0; i < _PlayerCount; i++)
+  {
+    auto& ep = __AllPlayers[i];
+    if (ep.IsLocalPlayer()) { return &ep; }
   }
   return nullptr;
 }

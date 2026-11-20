@@ -81,6 +81,8 @@ namespace funscrew::HFSO
   // ============================================================================================================
   /// <summary>
   /// Keeps track of the current connection attempt / sync.
+  /// REFACTOR: This is becoming more of a way to keep track of message / state times.  Rename it and update the
+  /// comments to reflect this.
   /// </summary>
   struct CConnectData {
     /// <summary>
@@ -102,11 +104,16 @@ namespace funscrew::HFSO
     int AckedSyncNumber = -1;
 
     /// <summary>
-    /// The next time that we will send a connection packet.
+    /// The time that any message was last sent.
+    /// NOTE: This is not the same as when it was put on the wire, rather last time that SendMsg was called.
     /// </summary>
-    uint32_t NextSendTime = 0;
+    int LastMsg = 0;
 
-    int StartTime = 0;
+    int ConnectStart = 0;
+    int LastConnectMsg = 0;
+
+    int DisconnectStart = 0;
+    int LastDisconnectMsg = 0;
   };
 
   // ============================================================================================================
@@ -122,6 +129,11 @@ namespace funscrew::HFSO
     /// Connection attempt timed out.  Disconnect immediately.
     /// </summary>
     ConnectTimeout,
+
+    /// <summary>
+    /// Did not receive disconnect ACK in a timely fashion.  Disconnect immediately.
+    /// </summary>
+    DisconnectTimeout,
 
     /// <summary>
     /// Remote stopped responding.  Disconnect immediately.
@@ -156,7 +168,7 @@ namespace funscrew::HFSO
     // Functions ===
     void Init(CPlayer& data_, CHFSOClient* parent_, IUdpBlaster* udp_);
 
-    void OnMessage(const CMsg* msg, size_t msgSize, const sockaddr_in& from);
+    virtual void OnMessage(const CMsg* msg, size_t msgSize, const sockaddr_in& from);
 
     void Update();
 
@@ -186,6 +198,9 @@ namespace funscrew::HFSO
     bool OnInvalid(const CMsg* msg, int msgSize);
     bool OnSyncRequest(const CMsg* msg, int msgSize);
     bool OnSyncReply(const CMsg* msg, int msgSize);
+    bool OnDisconnect(const CMsg* msg, int msgSize);
+    bool OnDisconnectAck(const CMsg* msg, int msgSize);
+
     bool OnInput(const CMsg* msg, int msgSize);
     bool OnQualityReport(const CMsg* msg, int msgSize);
     bool OnQualityReply(const CMsg* msg, int msgSize);
@@ -210,6 +225,9 @@ namespace funscrew::HFSO
     CConnectData _ConnectData = {};
 
     void SendSyncRequest();
+    void SendDisconnectMessage();
+    void SendDisconnectAck();
+
     void SendMsg(CMsg* msg);
     void SetState(EEndpointState newState);
 
@@ -217,6 +235,8 @@ namespace funscrew::HFSO
     uint16_t _SendSequence = 0;
 
     EZQ<QueueEntry, 64> SendQueue;
+
+    int Now() const;
 
   private:
     void PumpSendQueue();
